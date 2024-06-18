@@ -25,7 +25,7 @@ public class ConceptRowMapper implements RowMapper<Concept> {
         return new CategoricalConcept(
             rs.getString("concept_path"), rs.getString("name"),
             rs.getString("display"), rs.getString("dataset"),
-            List.of(rs.getString("values").split(",")),
+            rs.getString("values") == null ? List.of() : List.of(rs.getString("values").split(",")),
             null,
             null
         );
