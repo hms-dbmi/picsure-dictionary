@@ -3,6 +3,7 @@ package edu.harvard.dbmi.avillach.dictionary.concept;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.*;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -14,7 +15,7 @@ public class ConceptRowMapper implements RowMapper<Concept> {
 
     @Override
     public Concept mapRow(ResultSet rs, int rowNum) throws SQLException {
-        return switch (ConceptType.valueOf(rs.getString("concept_type"))) {
+        return switch (ConceptType.valueOf(StringUtils.capitalize(rs.getString("concept_type")))) {
             case Categorical -> mapCategorical(rs);
             case Continuous -> mapContinuous(rs);
         };
