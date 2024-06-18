@@ -15,7 +15,7 @@ public class ConceptRowMapper implements RowMapper<Concept> {
 
     @Override
     public Concept mapRow(ResultSet rs, int rowNum) throws SQLException {
-        return switch (ConceptType.valueOf(StringUtils.capitalize(rs.getString("concept_type")))) {
+        return switch (ConceptType.toConcept(rs.getString("concept_type"))) {
             case Categorical -> mapCategorical(rs);
             case Continuous -> mapContinuous(rs);
         };
