@@ -19,7 +19,7 @@ public record CategoricalConcept(
 ) implements Concept {
 
     public CategoricalConcept(CategoricalConcept core, Map<String, String> meta) {
-        this(core.conceptPath, core.name, core.display, core.dataset, core.values, core.children, core.meta);
+        this(core.conceptPath, core.name, core.display, core.dataset, core.values, core.children, meta);
     }
 
 
