@@ -41,7 +41,7 @@ public class ConceptRepository {
                 ds.REF as dataset,
                 continuous_min.VALUE as min, continuous_max.VALUE as max,
                 categorical_values.VALUE as values,
-                meta_description.description AS description
+                meta_description.VALUE AS description
             FROM
                 concept_node
                 LEFT JOIN dataset AS ds ON concept_node.dataset_id = ds.dataset_id
@@ -72,7 +72,7 @@ public class ConceptRepository {
                 ds.REF as dataset,
                 continuous_min.VALUE as min, continuous_max.VALUE as max,
                 categorical_values.VALUE as values,
-                meta_description.description AS description
+                meta_description.VALUE AS description
             FROM
                 concept_node
                 LEFT JOIN dataset AS ds ON concept_node.dataset_id = ds.dataset_id
