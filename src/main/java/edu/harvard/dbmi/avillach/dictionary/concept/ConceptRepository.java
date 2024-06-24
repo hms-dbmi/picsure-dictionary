@@ -45,7 +45,7 @@ public class ConceptRepository {
             FROM
                 concept_node
                 LEFT JOIN dataset AS ds ON concept_node.dataset_id = ds.dataset_id
-                LEFT JOIN concept_node_meta AS meta_description ON concept_node.concept_node_id = continuous_min.concept_node_id AND continuous_min.KEY = 'description'
+                LEFT JOIN concept_node_meta AS meta_description ON concept_node.concept_node_id = meta_description.concept_node_id AND meta_description.KEY = 'description'
                 LEFT JOIN concept_node_meta AS continuous_min ON concept_node.concept_node_id = continuous_min.concept_node_id AND continuous_min.KEY = 'MIN'
                 LEFT JOIN concept_node_meta AS continuous_max ON concept_node.concept_node_id = continuous_max.concept_node_id AND continuous_max.KEY = 'MAX'
                 LEFT JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'VALUES'
@@ -76,7 +76,7 @@ public class ConceptRepository {
             FROM
                 concept_node
                 LEFT JOIN dataset AS ds ON concept_node.dataset_id = ds.dataset_id
-                LEFT JOIN concept_node_meta AS meta_description ON concept_node.concept_node_id = continuous_min.concept_node_id AND continuous_min.KEY = 'description'
+                LEFT JOIN concept_node_meta AS meta_description ON concept_node.concept_node_id = meta_description.concept_node_id AND meta_description.KEY = 'description'
                 LEFT JOIN concept_node_meta AS continuous_min ON concept_node.concept_node_id = continuous_min.concept_node_id AND continuous_min.KEY = 'min'
                 LEFT JOIN concept_node_meta AS continuous_max ON concept_node.concept_node_id = continuous_max.concept_node_id AND continuous_max.KEY = 'max'
                 LEFT JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values'
