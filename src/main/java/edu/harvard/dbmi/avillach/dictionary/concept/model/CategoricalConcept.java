@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 public record CategoricalConcept(
-    String conceptPath, String name, String display, String dataset,
+    String conceptPath, String name, String display, String dataset, String description,
 
     List<String> values,
 
@@ -19,7 +19,7 @@ public record CategoricalConcept(
 ) implements Concept {
 
     public CategoricalConcept(CategoricalConcept core, Map<String, String> meta) {
-        this(core.conceptPath, core.name, core.display, core.dataset, core.values, core.children, meta);
+        this(core.conceptPath, core.name, core.display, core.dataset, core.description, core.values, core.children, meta);
     }
 
 

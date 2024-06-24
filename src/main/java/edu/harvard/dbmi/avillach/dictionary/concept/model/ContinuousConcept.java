@@ -5,14 +5,14 @@ import jakarta.annotation.Nullable;
 import java.util.Map;
 
 public record ContinuousConcept(
-    String conceptPath, String name, String display, String dataset,
+    String conceptPath, String name, String display, String dataset, String description,
 
     @Nullable Integer min, @Nullable Integer max,
     Map<String, String> meta
 ) implements Concept {
 
     public ContinuousConcept(ContinuousConcept core, Map<String, String> meta) {
-        this(core.conceptPath, core.name, core.display, core.dataset, core.min, core.max, meta);
+        this(core.conceptPath, core.name, core.display, core.dataset, core.description, core.min, core.max, meta);
     }
 
     @Override

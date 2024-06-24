@@ -24,7 +24,7 @@ public class ConceptRowMapper implements RowMapper<Concept> {
     private CategoricalConcept mapCategorical(ResultSet rs) throws SQLException {
         return new CategoricalConcept(
             rs.getString("concept_path"), rs.getString("name"),
-            rs.getString("display"), rs.getString("dataset"),
+            rs.getString("display"), rs.getString("dataset"), rs.getString("description"),
             rs.getString("values") == null ? List.of() : List.of(rs.getString("values").split(",")),
             null,
             null
@@ -34,7 +34,7 @@ public class ConceptRowMapper implements RowMapper<Concept> {
     private ContinuousConcept mapContinuous(ResultSet rs) throws SQLException {
         return new ContinuousConcept(
             rs.getString("concept_path"), rs.getString("name"),
-            rs.getString("display"), rs.getString("dataset"),
+            rs.getString("display"), rs.getString("dataset"), rs.getString("description"),
             rs.getInt("min"), rs.getInt("max"),
             null
         );

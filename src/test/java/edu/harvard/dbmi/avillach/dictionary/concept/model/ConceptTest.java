@@ -14,7 +14,7 @@ class ConceptTest {
 
     @Test
     void shouldRoundTrip() throws JsonProcessingException {
-        Concept expected = new CategoricalConcept("/foo//bar", "bar", "Bar", "study_a", List.of("a", "b"), List.of(), Map.of());
+        Concept expected = new CategoricalConcept("/foo//bar", "bar", "Bar", "study_a", null, List.of("a", "b"), List.of(), Map.of());
         String json = objectMapper.writeValueAsString(expected);
         Concept actual = objectMapper.readValue(json, Concept.class);
 
@@ -37,7 +37,7 @@ class ConceptTest {
             }
             """;
 
-        CategoricalConcept expected = new CategoricalConcept("/foo//bar", "bar", "Bar", "study_a", List.of("a", "b"), null, Map.of());
+        CategoricalConcept expected = new CategoricalConcept("/foo//bar", "bar", "Bar", "study_a", null, List.of("a", "b"), null, Map.of());
         Concept actual = new ObjectMapper().readValue(json, Concept.class);
 
         Assertions.assertEquals(expected, actual);
@@ -60,7 +60,7 @@ class ConceptTest {
             }
             """;
 
-        ContinuousConcept expected = new ContinuousConcept("/foo//baz", "baz", "Baz", "study_a", 0, 1, Map.of());
+        ContinuousConcept expected = new ContinuousConcept("/foo//baz", "baz", "Baz", "study_a", null, 0, 1, Map.of());
         Concept actual = new ObjectMapper().readValue(json, Concept.class);
 
         Assertions.assertEquals(expected, actual);
