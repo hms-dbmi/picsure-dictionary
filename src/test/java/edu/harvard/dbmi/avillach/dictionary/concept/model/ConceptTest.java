@@ -66,4 +66,17 @@ class ConceptTest {
         Assertions.assertEquals(expected, actual);
         Assertions.assertEquals(ConceptType.Continuous, actual.type());
     }
+
+    @Test
+    void shouldIncludeTypeInList() throws JsonProcessingException {
+        List<Record> concepts = List.of(
+            new ContinuousConcept("/foo//baz", "baz", "Baz", "study_a", null, 0, 1, Map.of()),
+            new CategoricalConcept("/foo//bar", "bar", "Bar", "study_a", null, List.of("a", "b"), null, Map.of())
+        );
+
+        String actual = new ObjectMapper().writeValueAsString(concepts);
+        String expected = "";
+
+        Assertions.assertEquals(expected, actual);
+    }
 }

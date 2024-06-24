@@ -1,5 +1,6 @@
 package edu.harvard.dbmi.avillach.dictionary.concept.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nullable;
 
 import java.util.List;
@@ -23,6 +24,7 @@ public record CategoricalConcept(
     }
 
 
+    @JsonProperty("type")
     @Override
     public ConceptType type() {
         return ConceptType.Categorical;

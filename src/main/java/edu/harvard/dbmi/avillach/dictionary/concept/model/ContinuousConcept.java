@@ -1,5 +1,6 @@
 package edu.harvard.dbmi.avillach.dictionary.concept.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nullable;
 
 import java.util.Map;
@@ -15,6 +16,7 @@ public record ContinuousConcept(
         this(core.conceptPath, core.name, core.display, core.dataset, core.description, core.min, core.max, meta);
     }
 
+    @JsonProperty("type")
     @Override
     public ConceptType type() {
         return ConceptType.Continuous;
