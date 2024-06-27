@@ -1,6 +1,8 @@
 package edu.harvard.dbmi.avillach.dictionary.concept;
 
 import edu.harvard.dbmi.avillach.dictionary.concept.model.*;
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -35,8 +37,26 @@ public class ConceptRowMapper implements RowMapper<Concept> {
         return new ContinuousConcept(
             rs.getString("concept_path"), rs.getString("name"),
             rs.getString("display"), rs.getString("dataset"), rs.getString("description"),
-            rs.getInt("min"), rs.getInt("max"),
+            parseMin(rs.getString("values")), parseMax(rs.getString("values")),
             null
         );
+    }
+
+    private Integer parseMin(String valuesArr) {
+        try {
+            JSONArray arr = new JSONArray(valuesArr);
+            return arr.length() == 2 ? arr.getInt(0) : 0;
+        } catch (JSONException ex) {
+            return 0;
+        }
+    }
+
+    private Integer parseMax(String valuesArr) {
+        try {
+            JSONArray arr = new JSONArray(valuesArr);
+            return arr.length() == 2 ? arr.getInt(1) : 0;
+        } catch (JSONException ex) {
+            return 0;
+        }
     }
 }
