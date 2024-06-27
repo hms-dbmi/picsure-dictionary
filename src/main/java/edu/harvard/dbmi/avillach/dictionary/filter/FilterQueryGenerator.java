@@ -40,18 +40,17 @@ public class FilterQueryGenerator {
                     concept_node.concept_node_id
                 FROM
                     concept_node
-                    LEFT JOIN concept_node_meta AS continuous_min ON concept_node.concept_node_id = continuous_min.concept_node_id AND continuous_min.KEY = 'MIN'
-                    LEFT JOIN concept_node_meta AS continuous_max ON concept_node.concept_node_id = continuous_max.concept_node_id AND continuous_max.KEY = 'MAX'
-                    LEFT JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'VALUES'
+                    LEFT JOIN concept_node_meta AS continuous_min ON concept_node.concept_node_id = continuous_min.concept_node_id AND continuous_min.KEY = 'min'
+                    LEFT JOIN concept_node_meta AS continuous_max ON concept_node.concept_node_id = continuous_max.concept_node_id AND continuous_max.KEY = 'max'
+                    LEFT JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values'
                 WHERE
                     continuous_min.value <> '' OR
                     continuous_max.value <> '' OR
                     categorical_values.value <> ''
             )
-            """);
-        if (clauses.isEmpty()) {
-            clauses = List.of("\tSELECT concept_node.concept_node_id FROM concept_node\n");
-        }
+            """
+        );
+
 
         String query = "(\n" + String.join("\n\tINTERSECT\n", clauses) + "\n) ORDER BY concept_node_id\n";
         if (pageable.isPaged()) {
