@@ -75,7 +75,7 @@ public class FilterQueryGenerator {
                 FROM
                     concept_node
                 WHERE
-                    concept_node.searchable_fields @@ phraseto_tsquery(:search);
+                    concept_node.searchable_fields @@ phraseto_tsquery(:search)
             )
             """;
     }
