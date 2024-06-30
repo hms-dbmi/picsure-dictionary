@@ -67,7 +67,7 @@ public class FilterQueryGenerator {
     }
 
     private String createSearchFilter(String search, MapSqlParameterSource params) {
-        params.addValue("search", "%" + search + "%");
+        params.addValue("search", search);
         return """
             (
                 SELECT
@@ -75,7 +75,7 @@ public class FilterQueryGenerator {
                 FROM
                     concept_node
                 WHERE
-                    concept_node.concept_path LIKE :search
+                    concept_node.searchable_fields @@ phraseto_tsquery(:search);
             )
             """;
     }
