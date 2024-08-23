@@ -16,5 +16,9 @@ COPY --from=build target/dictionary-*.jar /dictionary.jar
 # Time zone
 ENV TZ="US/Eastern"
 
+# If a --env-file is passed in, you can override these values
+ENV DATASOURCE_URL=${DATASOURCE_URL}
+ENV DATASOURCE_USERNAME=${DATASOURCE_USERNAME}
+
 # Default to no profile
 ENTRYPOINT java $DEBUG_VARS $PROXY_VARS -Xmx8192m -jar /dictionary.jar --spring.profiles.active=${SPRING_PROFILE:-}
