@@ -3,8 +3,11 @@ package edu.harvard.dbmi.avillach.dictionary.concept.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import jakarta.annotation.Nullable;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -18,7 +21,7 @@ import java.util.Map;
     @JsonSubTypes.Type(value = CategoricalConcept.class, name = "Categorical"),
 })
 public sealed interface Concept
-    permits CategoricalConcept, ContinuousConcept {
+    permits CategoricalConcept, ConceptShell, ContinuousConcept {
 
     /**
      * @return The complete concept path for this concept (// delimited)
@@ -48,5 +51,15 @@ public sealed interface Concept
 
     Map<String, String> meta();
 
+    @Nullable
+    List<Concept> children();
 
+    Concept withChildren(List<Concept> children);
+
+    default boolean conceptEquals(Object object) {
+        if (this == object) return true;
+        if (!(object instanceof Concept)) return false;
+        Concept that = (Concept) object;
+        return Objects.equals(dataset(), that.dataset()) && Objects.equals(conceptPath(), that.conceptPath());
+    }
 }

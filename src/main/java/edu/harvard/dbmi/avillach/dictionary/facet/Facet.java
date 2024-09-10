@@ -13,4 +13,12 @@ public record Facet(
     public Facet(Facet core, Map<String, String> meta) {
         this(core.name(), core.display(), core.description(), core.fullName(), core.count(), core.children(), core.category(), meta);
     }
+
+    public Facet(String name, String category) {
+        this(name, "", "", "", null, null, category, null);
+    }
+
+    public Facet withChildren(List<Facet> children) {
+        return new Facet(this.name, this.display, this.description, this.fullName, this.count, children, this.category, this.meta);
+    }
 }
