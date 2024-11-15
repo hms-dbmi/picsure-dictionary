@@ -42,7 +42,7 @@ public class FilterPreProcessor implements RequestBodyAdvice {
         return body;
     }
 
-    public static Filter processsFilter(Filter filter) {
+    public Filter processsFilter(Filter filter) {
         List<Facet> newFacets = filter.facets();
         List<String> newConsents = filter.consents();
         if (filter.facets() != null) {
