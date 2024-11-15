@@ -35,24 +35,28 @@ public class FilterPreProcessor implements RequestBodyAdvice {
         Class<? extends HttpMessageConverter<?>> converterType
     ) {
         if (body instanceof Filter filter) {
-            List<Facet> newFacets = filter.facets();
-            List<String> newConsents = filter.consents();
-            if (filter.facets() != null) {
-                newFacets = new ArrayList<>(filter.facets());
-                newFacets.sort(Comparator.comparing(Facet::name));
-            }
-            if (filter.consents() != null) {
-                newConsents = new ArrayList<>(newConsents);
-                newConsents.sort(Comparator.comparing(Function.identity()));
-            }
-            filter = new Filter(newFacets, filter.search(), newConsents);
-
-            if (StringUtils.hasLength(filter.search())) {
-                filter = new Filter(filter.facets(), filter.search().replaceAll("_", "/"), filter.consents());
-            }
-            return filter;
+            return processsFilter(filter);
         }
         return body;
+    }
+
+    public static Filter processsFilter(Filter filter) {
+        List<Facet> newFacets = filter.facets();
+        List<String> newConsents = filter.consents();
+        if (filter.facets() != null) {
+            newFacets = new ArrayList<>(filter.facets());
+            newFacets.sort(Comparator.comparing(Facet::name));
+        }
+        if (filter.consents() != null) {
+            newConsents = new ArrayList<>(newConsents);
+            newConsents.sort(Comparator.comparing(Function.identity()));
+        }
+        filter = new Filter(newFacets, filter.search(), newConsents);
+
+        if (StringUtils.hasLength(filter.search())) {
+            filter = new Filter(filter.facets(), filter.search().replaceAll("_", "/"), filter.consents());
+        }
+        return filter;
     }
 
     @Override
