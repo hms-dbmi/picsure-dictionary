@@ -47,4 +47,15 @@ class LegacySearchQueryMapperTest {
         Assertions.assertEquals(100, pageable.getPageSize());
     }
 
+    @Test
+    void shouldCreateQueryStructure() throws IOException {
+        String jsonString =
+            """
+                {"query":{"searchTerm":"tutorial-biolincc_digitalis","includedTags":[],"excludedTags":[],"returnTags":"true","offset":0,"limit":100}}
+                """;
+
+        LegacySearchQuery legacySearchQuery = legacySearchQueryMapper.mapFromJson(jsonString);
+        System.out.println(legacySearchQuery.filter().search());
+    }
+
 }

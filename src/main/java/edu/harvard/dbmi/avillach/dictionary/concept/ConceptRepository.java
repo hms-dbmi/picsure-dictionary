@@ -246,7 +246,7 @@ public class ConceptRepository {
     }
 
     public List<SearchResult> getLegacySearchResults(Filter filter, Pageable pageable) {
-        QueryParamPair filterQ = filterGen.generateFilterQuery(filter, pageable);
+        QueryParamPair filterQ = filterGen.generateLegacyFilterQuery(filter, pageable);
         String sql = ALLOW_FILTERING_Q + ", " + filterQ.query() + """
                 SELECT concept_node.concept_path  AS conceptPath,
                    concept_node.display           AS display,

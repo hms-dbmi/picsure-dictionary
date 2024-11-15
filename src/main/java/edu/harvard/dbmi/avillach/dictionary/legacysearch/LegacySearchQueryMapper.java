@@ -9,7 +9,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class LegacySearchQueryMapper {
@@ -22,8 +25,31 @@ public class LegacySearchQueryMapper {
 
         String searchTerm = queryNode.get("searchTerm").asText();
         int limit = queryNode.get("limit").asInt();
-        Filter filter = FilterPreProcessor.processsFilter(new Filter(List.of(), searchTerm, List.of()));
-        return new LegacySearchQuery(filter, PageRequest.of(0, limit));
+        return new LegacySearchQuery(new Filter(List.of(), constructTsQuery(searchTerm), List.of()), PageRequest.of(0, limit));
+    }
+
+    // An attempt to provide OR search that will produce similar results to legacy search-prototype
+    private String constructTsQuery(String searchTerm) {
+        // Split on the | to enable or queries
+        String[] orGroups = searchTerm.split("\\|");
+        List<String> orClauses = new ArrayList<>();
+
+        for (String group : orGroups) {
+            // To replicate legacy search we will split using its regex [\\s\\p{Punct}]+
+            String[] tokens = group.trim().split("[\\s\\p{Punct}]+");
+
+            // Now we will combine the tokens in this group and '&' them together.
+            String andClause = Arrays.stream(tokens).filter(token -> !token.isBlank()) // remove empty tokens.
+                .map(token -> token + ":*") // add the wild card for search
+                .collect(Collectors.joining(" & "));
+
+            if (!andClause.isBlank()) {
+                orClauses.add(andClause);
+            }
+        }
+
+
+        return String.join(" | ", orClauses);
     }
 
 }

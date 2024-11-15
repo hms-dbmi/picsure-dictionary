@@ -73,6 +73,8 @@ public class ConceptService {
     }
 
     public List<SearchResult> getLegacySearchResults(Filter filter, Pageable pageable) {
+
+
         return conceptRepository.getLegacySearchResults(filter, pageable);
     }
 

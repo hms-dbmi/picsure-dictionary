@@ -84,6 +84,27 @@ public class ConceptFilterQueryGenerator {
         clauses.add(createValuelessNodeFilter(filter.search(), filter.consents()));
 
 
+        String superQuery = getSuperQuery(pageable, clauses, params);
+
+
+        return new QueryParamPair(superQuery, params);
+    }
+
+    public QueryParamPair generateLegacyFilterQuery(Filter filter, Pageable pageable) {
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("disallowed_meta_keys", disallowedMetaFields);
+        List<String> clauses = new java.util.ArrayList<>(List.of());
+        if (StringUtils.hasLength(filter.search())) {
+            params.addValue("dynamic_tsquery", filter.search().trim());
+        }
+        clauses.add(createLegacyValuelessNodeFilter(filter.search()));
+        String superQuery = getSuperQuery(pageable, clauses, params);
+
+
+        return new QueryParamPair(superQuery, params);
+    }
+
+    private static String getSuperQuery(Pageable pageable, List<String> clauses, MapSqlParameterSource params) {
         String query = "(\n" + String.join("\n\tINTERSECT\n", clauses) + "\n)";
         String superQuery = """
             WITH q AS (
@@ -112,9 +133,7 @@ public class ConceptFilterQueryGenerator {
         }
 
         superQuery = " concepts_filtered_sorted AS (\n" + superQuery + "\n)";
-
-
-        return new QueryParamPair(superQuery, params);
+        return superQuery;
     }
 
     private String createValuelessNodeFilter(String search, List<String> consents) {
@@ -146,6 +165,35 @@ public class ConceptFilterQueryGenerator {
                 )
             """
             .formatted(rankQuery, rankWhere, consentWhere);
+    }
+
+    private String createLegacyValuelessNodeFilter(String search) {
+        String rankQuery = "0 as rank";
+        String rankWhere = "";
+        if (StringUtils.hasLength(search)) {
+            rankQuery = "ts_rank(searchable_fields, to_tsquery(:dynamic_tsquery)) AS rank";
+            rankWhere = "concept_node.searchable_fields @@ to_tsquery(:dynamic_tsquery) AND";
+        }
+        return """
+            SELECT
+                concept_node.concept_node_id,
+                %s
+            FROM
+                concept_node
+                LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id
+                LEFT JOIN concept_node_meta AS continuous_min ON concept_node.concept_node_id = continuous_min.concept_node_id AND continuous_min.KEY = 'min'
+                LEFT JOIN concept_node_meta AS continuous_max ON concept_node.concept_node_id = continuous_max.concept_node_id AND continuous_max.KEY = 'max'
+                LEFT JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values'
+            WHERE
+                %s
+                %s
+                (
+                    continuous_min.value <> '' OR
+                    continuous_max.value <> '' OR
+                    categorical_values.value <> ''
+                )
+            """
+            .formatted(rankQuery, rankWhere, "");
     }
 
     private List<String> createFacetFilter(Filter filter, MapSqlParameterSource params) {
