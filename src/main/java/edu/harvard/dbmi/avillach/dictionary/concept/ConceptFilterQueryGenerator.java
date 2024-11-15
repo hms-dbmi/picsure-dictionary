@@ -139,8 +139,8 @@ public class ConceptFilterQueryGenerator {
         String rankQuery = "0 as rank";
         String rankWhere = "";
         if (StringUtils.hasLength(search)) {
-            rankQuery = "ts_rank(searchable_fields, (phraseto_tsquery(:search)::text || ':*')::tsquery) as rank";
-            rankWhere = "concept_node.searchable_fields @@ (phraseto_tsquery(:search)::text || ':*')::tsquery AND";
+            rankQuery = "ts_rank(searchable_fields, to_tsquery(:search)) AS rank";
+            rankWhere = "concept_node.searchable_fields @@ to_tsquery(:search) AND";
         }
         String consentWhere = CollectionUtils.isEmpty(consents) ? "" : CONSENT_QUERY;
         // concept nodes that have no values and no min/max should not get returned by search

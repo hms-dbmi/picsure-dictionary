@@ -11,9 +11,11 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestBodyAdvice;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @ControllerAdvice
 public class FilterPreProcessor implements RequestBodyAdvice {
@@ -54,7 +56,8 @@ public class FilterPreProcessor implements RequestBodyAdvice {
         filter = new Filter(newFacets, filter.search(), newConsents);
 
         if (StringUtils.hasLength(filter.search())) {
-            filter = new Filter(filter.facets(), filter.search().replaceAll("_", "/"), filter.consents());
+            // filter = new Filter(filter.facets(), filter.search().replaceAll("_", "/"), filter.consents());
+            filter = new Filter(filter.facets(), constructTsQuery(filter.search()), filter.consents());
         }
         return filter;
     }
@@ -65,5 +68,29 @@ public class FilterPreProcessor implements RequestBodyAdvice {
         Class<? extends HttpMessageConverter<?>> converterType
     ) {
         return body;
+    }
+
+    // An attempt to provide OR search that will produce similar results to legacy search-prototype
+    private String constructTsQuery(String searchTerm) {
+        // Split on the | to enable or queries
+        String[] orGroups = searchTerm.split("\\|");
+        List<String> orClauses = new ArrayList<>();
+
+        for (String group : orGroups) {
+            // To replicate legacy search we will split using its regex [\\s\\p{Punct}]+
+            String[] tokens = group.trim().split("[\\s\\p{Punct}]+");
+
+            // Now we will combine the tokens in this group and '&' them together.
+            String andClause = Arrays.stream(tokens).filter(token -> !token.isBlank()) // remove empty tokens.
+                .map(token -> token + ":*") // add the wild card for search
+                .collect(Collectors.joining(" & "));
+
+            if (!andClause.isBlank()) {
+                orClauses.add(andClause);
+            }
+        }
+
+
+        return String.join(" | ", orClauses);
     }
 }
