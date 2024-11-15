@@ -100,7 +100,6 @@ public class ConceptFilterQueryGenerator {
         clauses.add(createLegacyValuelessNodeFilter(filter.search()));
         String superQuery = getSuperQuery(pageable, clauses, params);
 
-
         return new QueryParamPair(superQuery, params);
     }
 
