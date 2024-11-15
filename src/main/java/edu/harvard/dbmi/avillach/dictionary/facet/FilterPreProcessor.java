@@ -42,7 +42,7 @@ public class FilterPreProcessor implements RequestBodyAdvice {
         return body;
     }
 
-    public Filter processsFilter(Filter filter) {
+    public static Filter processsFilter(Filter filter) {
         List<Facet> newFacets = filter.facets();
         List<String> newConsents = filter.consents();
         if (filter.facets() != null) {
@@ -71,7 +71,7 @@ public class FilterPreProcessor implements RequestBodyAdvice {
     }
 
     // An attempt to provide OR search that will produce similar results to legacy search-prototype
-    private String constructTsQuery(String searchTerm) {
+    private static String constructTsQuery(String searchTerm) {
         // Split on the | to enable or queries
         String[] orGroups = searchTerm.split("\\|");
         List<String> orClauses = new ArrayList<>();
