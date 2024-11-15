@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -48,8 +49,6 @@ public class MetadataResultSetUtil {
             true
         );
     }
-
-
 
     public Result mapCategoricalMetadata(ResultSet rs) throws SQLException {
         String hashedVarId = hashVarId(rs.getString("conceptPath"));
@@ -96,15 +95,15 @@ public class MetadataResultSetUtil {
         return hexString.toString();
     }
 
-    private static String getParentDisplay(ResultSet rs) throws SQLException {
-        return rs.getString("parentDisplay") == null || rs.getString("parentDisplay").isBlank() ? "" : rs.getString("parentDisplay");
+    private String getParentDisplay(ResultSet rs) throws SQLException {
+        return StringUtils.hasLength("parentDisplay") ? "" : rs.getString("parentDisplay");
     }
 
-    private static String getParentName(ResultSet rs) throws SQLException {
-        return rs.getString("parentName") == null || rs.getString("parentName").isBlank() ? "All Variables" : rs.getString("parentName");
+    private String getParentName(ResultSet rs) throws SQLException {
+        return StringUtils.hasLength(rs.getString("parentName")) ? "All Variables" : rs.getString("parentName");
     }
 
-    private static String getDescription(ResultSet rs) throws SQLException {
-        return rs.getString("description") == null || rs.getString("description").isBlank() ? "" : rs.getString("description");
+    private String getDescription(ResultSet rs) throws SQLException {
+        return StringUtils.hasLength(rs.getString("description")) ? "" : rs.getString("description");
     }
 }
