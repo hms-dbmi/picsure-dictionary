@@ -3,6 +3,8 @@ package edu.harvard.dbmi.avillach.dictionary.concept;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.Concept;
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
 import edu.harvard.dbmi.avillach.dictionary.filter.QueryParamPair;
+import edu.harvard.dbmi.avillach.dictionary.legacysearch.SearchResultRowMapper;
+import edu.harvard.dbmi.avillach.dictionary.legacysearch.model.SearchResult;
 import edu.harvard.dbmi.avillach.dictionary.util.MapExtractor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +37,7 @@ public class ConceptRepository {
 
     private final NamedParameterJdbcTemplate template;
     private final ConceptRowMapper mapper;
+    private final SearchResultRowMapper searchResultRowMapper;
     private final ConceptFilterQueryGenerator filterGen;
     private final ConceptMetaExtractor conceptMetaExtractor;
     private final ConceptResultSetExtractor conceptResultSetExtractor;
@@ -43,12 +46,13 @@ public class ConceptRepository {
 
     @Autowired
     public ConceptRepository(
-        NamedParameterJdbcTemplate template, ConceptRowMapper mapper, ConceptFilterQueryGenerator filterGen,
-        ConceptMetaExtractor conceptMetaExtractor, ConceptResultSetExtractor conceptResultSetExtractor,
-        @Value("${filtering.unfilterable_concepts}") List<String> disallowedMetaFields
+        NamedParameterJdbcTemplate template, ConceptRowMapper mapper, SearchResultRowMapper searchResultRowMapper,
+        ConceptFilterQueryGenerator filterGen, ConceptMetaExtractor conceptMetaExtractor,
+        ConceptResultSetExtractor conceptResultSetExtractor, @Value("${filtering.unfilterable_concepts}") List<String> disallowedMetaFields
     ) {
         this.template = template;
         this.mapper = mapper;
+        this.searchResultRowMapper = searchResultRowMapper;
         this.filterGen = filterGen;
         this.conceptMetaExtractor = conceptMetaExtractor;
         this.conceptResultSetExtractor = conceptResultSetExtractor;
@@ -239,5 +243,47 @@ public class ConceptRepository {
 
         return Optional.ofNullable(template.query(sql, params, conceptResultSetExtractor));
 
+    }
+
+    public List<SearchResult> getLegacySearchResults(Filter filter, Pageable pageable) {
+        QueryParamPair filterQ = filterGen.generateFilterQuery(filter, pageable);
+        String sql = ALLOW_FILTERING_Q + ", " + filterQ.query() + """
+                SELECT concept_node.concept_path  AS conceptPath,
+                   concept_node.display           AS display,
+                   concept_node.name              AS name,
+                   concept_node.concept_type      AS conceptType,
+                   ds.REF                         as dataset,
+                   ds.abbreviation                AS studyAcronym,
+                   ds.full_name                   as dsFullName,
+                   continuous_min.VALUE           as min,
+                   continuous_max.VALUE           as max,
+                   categorical_values.VALUE       as values,
+                   allow_filtering.allowFiltering AS allowFiltering,
+                   meta_description.VALUE         AS description,
+                   stigmatized.value              AS stigmatized,
+                   parent.name                    AS parentName,
+                   parent.display                 AS parentDisplay
+            FROM concept_node
+                     INNER JOIN concepts_filtered_sorted ON concepts_filtered_sorted.concept_node_id = concept_node.concept_node_id
+                     LEFT JOIN dataset AS ds ON concept_node.dataset_id = ds.dataset_id
+                     LEFT JOIN concept_node_meta AS meta_description
+                               ON concept_node.concept_node_id = meta_description.concept_node_id AND
+                                  meta_description.KEY = 'description'
+                     LEFT JOIN concept_node_meta AS continuous_min
+                               ON concept_node.concept_node_id = continuous_min.concept_node_id AND continuous_min.KEY = 'min'
+                     LEFT JOIN concept_node_meta AS continuous_max
+                               ON concept_node.concept_node_id = continuous_max.concept_node_id AND continuous_max.KEY = 'max'
+                     LEFT JOIN concept_node_meta AS categorical_values
+                               ON concept_node.concept_node_id = categorical_values.concept_node_id AND
+                                  categorical_values.KEY = 'values'
+                     LEFT JOIN concept_node_meta AS stigmatized ON concept_node.concept_node_id = stigmatized.concept_node_id AND
+                                                                   stigmatized.KEY = 'stigmatized'
+                     LEFT JOIN concept_node AS parent ON parent.concept_node_id = concept_node.parent_id
+                     LEFT JOIN allow_filtering ON concept_node.concept_node_id = allow_filtering.concept_node_id
+            ORDER BY concepts_filtered_sorted.rank DESC, concept_node.concept_node_id ASC
+            """;
+        MapSqlParameterSource params = filterQ.params().addValue("disallowed_meta_keys", disallowedMetaFields);
+
+        return template.query(sql, params, searchResultRowMapper);
     }
 }
