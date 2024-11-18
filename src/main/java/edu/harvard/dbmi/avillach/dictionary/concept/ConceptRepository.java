@@ -18,6 +18,7 @@ import java.util.Optional;
 
 import static edu.harvard.dbmi.avillach.dictionary.util.QueryUtility.ALLOW_FILTERING_Q;
 
+
 @Repository
 public class ConceptRepository {
 
@@ -30,9 +31,9 @@ public class ConceptRepository {
 
     @Autowired
     public ConceptRepository(
-        NamedParameterJdbcTemplate template, ConceptRowMapper mapper, SearchResultRowMapper searchResultRowMapper,
-        ConceptFilterQueryGenerator filterGen, ConceptMetaExtractor conceptMetaExtractor,
-        ConceptResultSetExtractor conceptResultSetExtractor, @Value("${filtering.unfilterable_concepts}") List<String> disallowedMetaFields
+        NamedParameterJdbcTemplate template, ConceptRowMapper mapper, ConceptFilterQueryGenerator filterGen,
+        ConceptMetaExtractor conceptMetaExtractor, ConceptResultSetExtractor conceptResultSetExtractor,
+        @Value("${filtering.unfilterable_concepts}") List<String> disallowedMetaFields
     ) {
         this.template = template;
         this.mapper = mapper;
@@ -99,7 +100,8 @@ public class ConceptRepository {
                     LEFT JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values'
                     LEFT JOIN allow_filtering ON concept_node.concept_node_id = allow_filtering.concept_node_id
                 WHERE
-                    concept_node.concept_path IN :conceptPaths
+                    concept_node.concept_path = :conceptPath
+                    AND ds.REF = :dataset
                 """;
         MapSqlParameterSource params = new MapSqlParameterSource().addValue("conceptPath", conceptPath).addValue("dataset", dataset)
             .addValue("disallowed_meta_keys", disallowedMetaFields);

@@ -5,7 +5,6 @@ import edu.harvard.dbmi.avillach.dictionary.concept.model.Concept;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.ConceptShell;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.ContinuousConcept;
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
-import edu.harvard.dbmi.avillach.dictionary.legacysearch.model.SearchResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
@@ -70,10 +69,6 @@ public class ConceptService {
 
     public Optional<Concept> conceptDetailWithoutAncestors(String dataset, String conceptPath) {
         return getConcept(dataset, conceptPath, false);
-    }
-
-    public List<SearchResult> getLegacySearchResults(Filter filter, Pageable pageable) {
-        return conceptRepository.getLegacySearchResults(filter, pageable);
     }
 
 }

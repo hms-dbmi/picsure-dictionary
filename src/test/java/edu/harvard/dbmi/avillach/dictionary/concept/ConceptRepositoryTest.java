@@ -6,7 +6,6 @@ import edu.harvard.dbmi.avillach.dictionary.concept.model.ConceptShell;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.ContinuousConcept;
 import edu.harvard.dbmi.avillach.dictionary.facet.Facet;
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
-import edu.harvard.dbmi.avillach.dictionary.legacysearch.model.SearchResult;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -325,36 +324,5 @@ class ConceptRepositoryTest {
         Assertions.assertEquals(6.77f, concept.max());
     }
 
-    @Test
-    void shouldGetLegacySearchResults() {
-        List<SearchResult> searchResults = subject.getLegacySearchResults(new Filter(List.of(), "", List.of()), Pageable.unpaged());
 
-        Assertions.assertEquals(30, searchResults.size());
-    }
-
-    @Test
-    void shouldGetLegacySearchResultsBySearch() {
-        List<SearchResult> searchResults =
-            subject.getLegacySearchResults(new Filter(List.of(), "phs000007", List.of()), Pageable.unpaged());
-
-        searchResults.forEach(searchResult -> Assertions.assertEquals("phs000007", searchResult.result().studyId()));
-
-    }
-
-    @Test
-    void shouldGetLegacySearchResultsByPageSize() {
-        List<SearchResult> searchResults = subject.getLegacySearchResults(new Filter(List.of(), "", List.of()), Pageable.ofSize(5));
-
-        Assertions.assertEquals(5, searchResults.size());
-    }
-
-    @Test
-    void legacySearchResultShouldGetEqualCountToConceptSearch() {
-        // This test will ensure modifications made to the conceptSearch will be reflected in the legacy search result.
-        // They use near equivalent queries and updates made to one should be made to the other.
-        List<SearchResult> searchResults = subject.getLegacySearchResults(new Filter(List.of(), "", List.of()), Pageable.unpaged());
-        List<Concept> concepts = subject.getConcepts(new Filter(List.of(), "", List.of()), Pageable.unpaged());
-
-        Assertions.assertEquals(searchResults.size(), concepts.size());
-    }
 }
