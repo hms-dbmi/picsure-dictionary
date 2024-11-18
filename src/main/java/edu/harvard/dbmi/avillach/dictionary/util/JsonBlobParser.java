@@ -1,21 +1,31 @@
 package edu.harvard.dbmi.avillach.dictionary.util;
 
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 public class JsonBlobParser {
 
     private final static Logger log = LoggerFactory.getLogger(JsonBlobParser.class);
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public JsonBlobParser() {}
 
     public List<String> parseValues(String valuesArr) {
         try {
@@ -62,4 +72,17 @@ public class JsonBlobParser {
         return parseFromIndex(valuesArr, 1);
     }
 
+    public Map<String, String> parseMetaData(String jsonMetaData) {
+        Map<String, String> metadata;
+
+        try {
+            List<Map<String, String>> maps = objectMapper.readValue(jsonMetaData, new TypeReference<List<Map<String, String>>>() {});
+            // convert the list to a flat map
+            metadata = maps.stream().collect(Collectors.toMap(entry -> entry.get("key"), entry -> entry.get("value")));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+
+        return metadata;
+    }
 }
