@@ -22,8 +22,8 @@ public class ConceptRowWithMetaMapper implements RowMapper<Concept> {
     @Override
     public Concept mapRow(ResultSet rs, int rowNum) throws SQLException {
         return switch (ConceptType.toConcept(rs.getString("concept_type"))) {
-            case Categorical -> conceptResultSetUtil.mapCategorical(rs, true);
-            case Continuous -> conceptResultSetUtil.mapContinuous(rs, true);
+            case Categorical -> conceptResultSetUtil.mapCategoricalWithMetadata(rs);
+            case Continuous -> conceptResultSetUtil.mapContinuousWithMetadata(rs);
         };
     }
 

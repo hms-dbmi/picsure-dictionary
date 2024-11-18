@@ -326,11 +326,14 @@ class ConceptRepositoryTest {
 
     @Test
     void shouldGetConceptsByConceptPath() {
-        List<String> conceptPaths =
-            List.of("\\phs002385\\TXNUM\\", "\\phs000284\\pht001902\\phv00122507\\age\\", "\\phs000007\\pht000022\\phv00004260\\FM219\\");
+        List<String> conceptPaths = List.of(
+            "\\phs002385\\TXNUM\\", "\\phs000284\\pht001902\\phv00122507\\age\\", "\\phs000007\\pht000022" + "\\phv00004260\\FM219\\",
+            "\\NHANES\\examination\\physical fitness\\Stage 1 heart rate (per min)", "\\phs000007\\pht000021" + "\\phv00003844\\FL200\\",
+            "\\phs002715\\age\\"
+        );
         Optional<List<Concept>> conceptsByPath = subject.getConceptsByPathWithMetadata(conceptPaths);
         Assertions.assertTrue(conceptsByPath.isPresent());
-        Assertions.assertEquals(3, conceptsByPath.get().size());
+        Assertions.assertEquals(6, conceptsByPath.get().size());
     }
 
     @Test
