@@ -52,6 +52,7 @@ public class DashboardRepository {
         String sql =
             """
                     SELECT
+                        dataset.dataset_id as dataset_id,
                         dataset.abbreviation AS abbreviation,
                         dataset.full_name AS name,
                         CASE
