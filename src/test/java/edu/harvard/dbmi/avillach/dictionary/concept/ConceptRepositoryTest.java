@@ -331,19 +331,19 @@ class ConceptRepositoryTest {
             "\\NHANES\\examination\\physical fitness\\Stage 1 heart rate (per min)", "\\phs000007\\pht000021" + "\\phv00003844\\FL200\\",
             "\\phs002715\\age\\"
         );
-        Optional<List<Concept>> conceptsByPath = subject.getConceptsByPathWithMetadata(conceptPaths);
-        Assertions.assertTrue(conceptsByPath.isPresent());
-        Assertions.assertEquals(6, conceptsByPath.get().size());
+        List<Concept> conceptsByPath = subject.getConceptsByPathWithMetadata(conceptPaths);
+        Assertions.assertFalse(conceptsByPath.isEmpty());
+        Assertions.assertEquals(6, conceptsByPath.size());
     }
 
     @Test
     void shouldGetSameConceptMetaAsConceptDetails() {
         List<String> conceptPaths = List.of("\\phs002385\\TXNUM\\", "\\phs000284\\pht001902\\phv00122507\\age\\");
-        Optional<List<Concept>> conceptsByPath = subject.getConceptsByPathWithMetadata(conceptPaths);
-        Assertions.assertTrue(conceptsByPath.isPresent());
+        List<Concept> conceptsByPath = subject.getConceptsByPathWithMetadata(conceptPaths);
+        Assertions.assertFalse(conceptsByPath.isEmpty());
 
         // Verify the meta data is correctly retrieve by comparing against known good query.
-        Concept concept = conceptsByPath.get().get(0);
+        Concept concept = conceptsByPath.getFirst();
         Map<String, String> expectedMeta = subject.getConceptMeta(concept.dataset(), concept.conceptPath());
 
         // compare the maps to each other.

@@ -231,7 +231,7 @@ public class ConceptRepository {
     }
 
 
-    public Optional<List<Concept>> getConceptsByPathWithMetadata(List<String> conceptPaths) {
+    public List<Concept> getConceptsByPathWithMetadata(List<String> conceptPaths) {
         String sql = ALLOW_FILTERING_Q + ", "
             + """
                 filtered_concepts AS (
@@ -277,6 +277,6 @@ public class ConceptRepository {
 
         MapSqlParameterSource params =
             new MapSqlParameterSource().addValue("conceptPaths", conceptPaths).addValue("disallowed_meta_keys", disallowedMetaFields);
-        return Optional.of(template.query(sql, params, conceptRowWithMetaMapper));
+        return template.query(sql, params, conceptRowWithMetaMapper);
     }
 }

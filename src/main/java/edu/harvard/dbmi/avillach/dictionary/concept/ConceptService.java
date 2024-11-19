@@ -71,11 +71,7 @@ public class ConceptService {
         return getConcept(dataset, conceptPath, false);
     }
 
-    public Optional<List<Concept>> conceptsWithDetail(List<String> conceptPaths) {
-        if (conceptPaths.isEmpty()) {
-            return Optional.empty();
-        }
-
+    public List<Concept> conceptsWithDetail(List<String> conceptPaths) {
         return this.conceptRepository.getConceptsByPathWithMetadata(conceptPaths);
     }
 }

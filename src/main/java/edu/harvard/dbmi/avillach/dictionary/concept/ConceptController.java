@@ -60,7 +60,7 @@ public class ConceptController {
 
     @PostMapping(path = "/concepts/detail")
     public ResponseEntity<List<Concept>> conceptsDetail(@RequestBody() List<String> conceptPaths) {
-        return conceptService.conceptsWithDetail(conceptPaths).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(conceptService.conceptsWithDetail(conceptPaths));
     }
 
     @PostMapping(path = "/concepts/tree/{dataset}")
