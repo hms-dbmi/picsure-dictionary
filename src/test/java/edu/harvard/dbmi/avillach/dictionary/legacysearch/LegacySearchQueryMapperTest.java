@@ -28,12 +28,12 @@ class LegacySearchQueryMapperTest {
         Filter filter = legacySearchQuery.filter();
         Pageable pageable = legacySearchQuery.pageable();
 
-        Assertions.assertEquals("age", filter.search());
+        Assertions.assertEquals("age:*", filter.search());
         Assertions.assertEquals(100, pageable.getPageSize());
     }
 
     @Test
-    void shouldReplaceUnderscore() throws IOException {
+    void shouldHandlePunct() throws IOException {
         String jsonString =
             """
                 {"query":{"searchTerm":"tutorial-biolincc_digitalis","includedTags":[],"excludedTags":[],"returnTags":"true","offset":0,"limit":100}}
@@ -43,7 +43,7 @@ class LegacySearchQueryMapperTest {
         Filter filter = legacySearchQuery.filter();
         Pageable pageable = legacySearchQuery.pageable();
 
-        Assertions.assertEquals("tutorial-biolincc/digitalis", filter.search());
+        Assertions.assertEquals("tutorial:* & biolincc:* & digitalis:*", filter.search());
         Assertions.assertEquals(100, pageable.getPageSize());
     }
 
