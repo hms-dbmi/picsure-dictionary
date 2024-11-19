@@ -54,4 +54,21 @@ class LegacySearchControllerIntegrationTest {
         searchResults.forEach(searchResult -> Assertions.assertEquals("phs000007", searchResult.result().studyId()));
     }
 
+    @Test
+    void shouldHandleORRequest() throws IOException {
+        String jsonString = """
+            {"query":{"searchTerm":"physical|age","includedTags":[],"excludedTags":[],"returnTags":"true","offset":0,"limit":100}}
+            """;
+
+        ResponseEntity<LegacyResponse> legacyResponseResponseEntity = legacySearchController.legacySearch(jsonString);
+        System.out.println(legacyResponseResponseEntity);
+        Assertions.assertEquals(HttpStatus.OK, legacyResponseResponseEntity.getStatusCode());
+        LegacyResponse legacyResponseBody = legacyResponseResponseEntity.getBody();
+        Assertions.assertNotNull(legacyResponseBody);
+        Results results = legacyResponseBody.results();
+        List<SearchResult> searchResults = results.searchResults();
+        System.out.println(searchResults);
+    }
+
+
 }
