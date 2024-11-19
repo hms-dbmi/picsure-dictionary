@@ -47,4 +47,32 @@ class LegacySearchQueryMapperTest {
         Assertions.assertEquals(100, pageable.getPageSize());
     }
 
+    @Test
+    void shouldHandleOR() throws IOException {
+        String jsonString = """
+            {"query":{"searchTerm":"sex|gender","includedTags":[],"excludedTags":[],"returnTags":"true","offset":0,"limit":100}}
+            """;
+
+        LegacySearchQuery legacySearchQuery = legacySearchQueryMapper.mapFromJson(jsonString);
+        Filter filter = legacySearchQuery.filter();
+        Pageable pageable = legacySearchQuery.pageable();
+
+        Assertions.assertEquals("sex:* | gender:*", filter.search());
+        Assertions.assertEquals(100, pageable.getPageSize());
+    }
+
+    @Test
+    void shouldHandleORAndPunct() throws IOException {
+        String jsonString = """
+            {"query":{"searchTerm":"sex|gender age","includedTags":[],"excludedTags":[],"returnTags":"true","offset":0,"limit":100}}
+            """;
+
+        LegacySearchQuery legacySearchQuery = legacySearchQueryMapper.mapFromJson(jsonString);
+        Filter filter = legacySearchQuery.filter();
+        Pageable pageable = legacySearchQuery.pageable();
+
+        Assertions.assertEquals("sex:* | gender:* & age:*", filter.search());
+        Assertions.assertEquals(100, pageable.getPageSize());
+    }
+
 }
