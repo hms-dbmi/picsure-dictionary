@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
 import edu.harvard.dbmi.avillach.dictionary.legacysearch.model.LegacySearchQuery;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +19,7 @@ import java.util.stream.Collectors;
 public class LegacySearchQueryMapper {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final Logger log = LoggerFactory.getLogger(LegacySearchQueryMapper.class);
 
     public LegacySearchQueryMapper() {}
 
@@ -26,7 +29,9 @@ public class LegacySearchQueryMapper {
 
         String searchTerm = queryNode.get("searchTerm").asText();
         int limit = queryNode.get("limit").asInt();
-        return new LegacySearchQuery(new Filter(List.of(), constructTsQuery(searchTerm), List.of()), PageRequest.of(0, limit));
+        searchTerm = constructTsQuery(searchTerm);
+        log.debug("Constructed Search Term: {}", searchTerm);
+        return new LegacySearchQuery(new Filter(List.of(), searchTerm, List.of()), PageRequest.of(0, limit));
     }
 
     // An attempt to provide OR search that will produce similar results to legacy search-prototype
