@@ -78,7 +78,15 @@ public class JsonBlobParser {
         try {
             List<Map<String, String>> maps = objectMapper.readValue(jsonMetaData, new TypeReference<List<Map<String, String>>>() {});
             // convert the list to a flat map
-            metadata = maps.stream().collect(Collectors.toMap(entry -> entry.get("key"), entry -> entry.get("value")));
+            Map<String, String> map = new HashMap<>();
+            for (Map<String, String> entry : maps) {
+                if (map.put(entry.get("key"), entry.get("value")) != null) {
+                    throw new IllegalStateException(
+                        "parseMetaData() Duplicate key found in metadata. Key: " + entry.get("key") + " Value: " + entry.get("value")
+                    );
+                }
+            }
+            metadata = map;
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
