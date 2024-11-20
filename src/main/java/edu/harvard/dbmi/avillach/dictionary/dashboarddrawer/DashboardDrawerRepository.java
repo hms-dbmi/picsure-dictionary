@@ -49,7 +49,7 @@ public class DashboardDrawerRepository {
         }
     }
 
-    public List<DashboardDrawer> getDashboardDrawerRows(Integer datasetId) {
+    public Optional<DashboardDrawer> getDashboardDrawerRows(Integer datasetId) {
         String materializedViewSql = """
             select * from dictionary_db.dict.dataset_meta_materialized_view dmmv where dmmv.dataset_id = :datasetId;
             """;
@@ -73,10 +73,10 @@ public class DashboardDrawerRepository {
         params.addValue("datasetId", datasetId);
 
         try {
-            return template.query(materializedViewSql, params, new DashboardDrawerRowMapper());
+            return template.query(materializedViewSql, params, new DashboardDrawerRowMapper()).stream().findFirst();
         } catch (Exception e) {
             log.debug("Materialized view not available, using fallback query. Error: {}", e.getMessage());
-            return template.query(fallbackSql, params, new DashboardDrawerRowMapper());
+            return template.query(fallbackSql, params, new DashboardDrawerRowMapper()).stream().findFirst();
         }
     }
 }

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class DashboardDrawerService {
@@ -24,13 +25,13 @@ public class DashboardDrawerService {
      *
      * @return All Dashboard Instances and their metadata.
      */
-    public DashboardDrawerList findAll() {
+    public Optional<DashboardDrawerList> findAll() {
         if (dashboardLayout.equalsIgnoreCase("bdc")) {
             List<DashboardDrawer> records = repository.getDashboardDrawerRows();
-            return new DashboardDrawerList(records);
+            return Optional.of(new DashboardDrawerList(records));
         }
 
-        return new DashboardDrawerList(new ArrayList<>());
+        return Optional.of(new DashboardDrawerList(new ArrayList<>()));
     }
 
     /**
@@ -40,15 +41,10 @@ public class DashboardDrawerService {
      * @param datasetId the ID of the dataset to fetch.
      * @return a single Dashboard instance with drawer-specific metadata.
      */
-    public DashboardDrawer findByDatasetId(Integer datasetId) {
-        if (dashboardLayout.equalsIgnoreCase("bdc")) {
-            List<DashboardDrawer> records = repository.getDashboardDrawerRows(datasetId);
-
-            if (records.size() == 1) {
-                return records.getFirst();
-            }
+    public Optional<DashboardDrawer> findByDatasetId(Integer datasetId) {
+        if ("bdc".equalsIgnoreCase(dashboardLayout)) {
+            return repository.getDashboardDrawerRows(datasetId);
         }
-
-        return new DashboardDrawer(-1, "", "", new ArrayList<>(), "", new ArrayList<>(), "", "");
+        return Optional.empty();
     }
 }

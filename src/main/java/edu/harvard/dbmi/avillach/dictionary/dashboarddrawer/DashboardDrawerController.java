@@ -14,11 +14,11 @@ public class DashboardDrawerController {
 
     @GetMapping
     public ResponseEntity<DashboardDrawerList> findAll() {
-        return ResponseEntity.ok(dashboardDrawerService.findAll());
+        return dashboardDrawerService.findAll().map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<DashboardDrawer> findByDatasetId(@PathVariable Integer id) {
-        return ResponseEntity.ok(dashboardDrawerService.findByDatasetId(id));
+        return dashboardDrawerService.findByDatasetId(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 }
