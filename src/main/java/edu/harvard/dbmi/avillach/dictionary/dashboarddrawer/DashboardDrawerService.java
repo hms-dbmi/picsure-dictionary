@@ -22,7 +22,7 @@ public class DashboardDrawerService {
     /**
      * Retrieves the Dashboard Drawer for all datasets.
      *
-     * @return a Dashboard instance with drawer-specific columns and rows.
+     * @return All Dashboard Instances and their metadata.
      */
     public DashboardDrawerList findAll() {
         if (dashboardLayout.equalsIgnoreCase("bdc")) {
@@ -36,14 +36,14 @@ public class DashboardDrawerService {
     /**
      * Retrieves the Dashboard Drawer for a specific dataset.
      *
+     *
      * @param datasetId the ID of the dataset to fetch.
-     * @return a Dashboard instance with drawer-specific columns and rows.
+     * @return a single Dashboard instance with drawer-specific metadata.
      */
     public DashboardDrawer findByDatasetId(Integer datasetId) {
         if (dashboardLayout.equalsIgnoreCase("bdc")) {
             List<DashboardDrawer> records = repository.getDashboardDrawerRows(datasetId);
-            // Should be atomic as the query is an aggregation on the dataset table.
-            // Probably a better way to do this.
+
             if (records.size() == 1) {
                 return records.getFirst();
             }
