@@ -25,13 +25,11 @@ public class DashboardDrawerService {
      *
      * @return All Dashboard Instances and their metadata.
      */
-    public Optional<DashboardDrawerList> findAll() {
+    public Optional<List<DashboardDrawer>> findAll() {
         if (dashboardLayout.equalsIgnoreCase("bdc")) {
-            List<DashboardDrawer> records = repository.getDashboardDrawerRows();
-            return Optional.of(new DashboardDrawerList(records));
+            return repository.getDashboardDrawerRows();
         }
-
-        return Optional.of(new DashboardDrawerList(new ArrayList<>()));
+        return Optional.of(new ArrayList<>());
     }
 
     /**

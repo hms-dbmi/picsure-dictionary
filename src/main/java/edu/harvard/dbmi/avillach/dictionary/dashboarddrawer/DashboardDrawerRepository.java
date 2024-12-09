@@ -21,7 +21,7 @@ public class DashboardDrawerRepository {
         this.template = template;
     }
 
-    public List<DashboardDrawer> getDashboardDrawerRows() {
+    public Optional<List<DashboardDrawer>> getDashboardDrawerRows() {
         String materializedViewSql = """
             select * from dictionary_db.dict.dataset_meta_materialized_view dmmv;
             """;
@@ -37,15 +37,15 @@ public class DashboardDrawerRepository {
                 MAX(DISTINCT dm.value) FILTER (where dm.key IN ('sponsor')) sponsor
             FROM dataset d
             JOIN dataset_meta dm ON d.dataset_id = dm.dataset_id
-            JOIN consent c ON d.dataset_id = c.dataset_id
+            LEFT JOIN consent c ON d.dataset_id = c.dataset_id
             GROUP BY d.dataset_id
             """;
 
         try {
-            return template.query(materializedViewSql, new DashboardDrawerRowMapper());
+            return Optional.of(template.query(materializedViewSql, new DashboardDrawerRowMapper()));
         } catch (Exception e) {
             log.debug("Materialized view not available, using fallback query. Error: {}", e.getMessage());
-            return template.query(fallbackSql, new DashboardDrawerRowMapper());
+            return Optional.of(template.query(fallbackSql, new DashboardDrawerRowMapper()));
         }
     }
 
