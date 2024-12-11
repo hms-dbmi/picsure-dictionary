@@ -28,7 +28,6 @@ volumes:
 
 networks:
   dictionary:
-    external: true
   picsure:
     external: true
   hpdsNet:
