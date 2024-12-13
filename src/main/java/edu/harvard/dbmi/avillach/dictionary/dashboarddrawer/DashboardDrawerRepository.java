@@ -1,7 +1,5 @@
 package edu.harvard.dbmi.avillach.dictionary.dashboarddrawer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -14,19 +12,14 @@ public class DashboardDrawerRepository {
 
     private final NamedParameterJdbcTemplate template;
 
-    private static final Logger log = LoggerFactory.getLogger(DashboardDrawerRepository.class);
-
     @Autowired
     public DashboardDrawerRepository(NamedParameterJdbcTemplate template) {
         this.template = template;
     }
 
     public Optional<List<DashboardDrawer>> getDashboardDrawerRows() {
-        String materializedViewSql = """
-            select * from dictionary_db.dict.dataset_meta_materialized_view dmmv;
-            """;
 
-        String fallbackSql = """
+        String sql = """
             SELECT d.dataset_id,
                 MAX(d.full_name) study_fullname,
                 MAX(d.abbreviation) study_abbreviation,
@@ -41,20 +34,12 @@ public class DashboardDrawerRepository {
             GROUP BY d.dataset_id
             """;
 
-        try {
-            return Optional.of(template.query(materializedViewSql, new DashboardDrawerRowMapper()));
-        } catch (Exception e) {
-            log.debug("Materialized view not available, using fallback query. Error: {}", e.getMessage());
-            return Optional.of(template.query(fallbackSql, new DashboardDrawerRowMapper()));
-        }
+        return Optional.of(template.query(sql, new DashboardDrawerRowMapper()));
+
     }
 
-    public Optional<DashboardDrawer> getDashboardDrawerRows(Integer datasetId) {
-        String materializedViewSql = """
-            select * from dictionary_db.dict.dataset_meta_materialized_view dmmv where dmmv.dataset_id = :datasetId;
-            """;
-
-        String fallbackSql = """
+    public Optional<DashboardDrawer> getDashboardDrawerRowsByDatasetId(Integer datasetId) {
+        String sql = """
             SELECT d.dataset_id dataset_id,
                 MAX(d.full_name) study_fullname,
                 MAX(d.abbreviation) study_abbreviation,
@@ -72,11 +57,6 @@ public class DashboardDrawerRepository {
         MapSqlParameterSource params = new MapSqlParameterSource();
         params.addValue("datasetId", datasetId);
 
-        try {
-            return template.query(materializedViewSql, params, new DashboardDrawerRowMapper()).stream().findFirst();
-        } catch (Exception e) {
-            log.debug("Materialized view not available, using fallback query. Error: {}", e.getMessage());
-            return template.query(fallbackSql, params, new DashboardDrawerRowMapper()).stream().findFirst();
-        }
+        return template.query(sql, params, new DashboardDrawerRowMapper()).stream().findFirst();
     }
 }
