@@ -6,7 +6,7 @@ services:
     image: postgres:16-alpine
     volumes:
       - picsure-search:/var/lib/postgresql/data
-      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+      - $DOCKER_CONFIG_DIR/jenkins_home/workspace/Build and Deploy Dictionary API/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
     env_file: .env
     networks:
       - dictionary
