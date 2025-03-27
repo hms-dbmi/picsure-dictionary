@@ -16,12 +16,14 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 @SpringBootTest(properties = {"concept.tree.max_depth=1"})
+@ActiveProfiles("test")
 class ConceptControllerTest {
 
     @MockBean
@@ -37,14 +39,10 @@ class ConceptControllerTest {
             new CategoricalConcept("/foo//bar", "bar", "Bar", "my_dataset", "foo!", List.of("a", "b"), true, "", List.of(), Map.of()),
             new ContinuousConcept("/foo//baz", "baz", "Baz", "my_dataset", "foo!", true, 0F, 100F, "", Map.of())
         );
-        Filter filter = new Filter(
-            List.of(new Facet("questionare", "Questionare", "?", "Questionare", 1, null, "category", null)),
-            "foo", List.of()
-        );
-        Mockito.when(conceptService.listConcepts(filter, Pageable.ofSize(10).withPage(1)))
-            .thenReturn(expected);
-        Mockito.when(conceptService.countConcepts(filter))
-            .thenReturn(100L);
+        Filter filter =
+            new Filter(List.of(new Facet("questionare", "Questionare", "?", "Questionare", 1, null, "category", null)), "foo", List.of());
+        Mockito.when(conceptService.listConcepts(filter, Pageable.ofSize(10).withPage(1))).thenReturn(expected);
+        Mockito.when(conceptService.countConcepts(filter)).thenReturn(100L);
 
         Page<Concept> actual = subject.listConcepts(filter, 1, 10).getBody();
 
@@ -56,8 +54,7 @@ class ConceptControllerTest {
     void shouldGetConceptDetails() {
         CategoricalConcept expected =
             new CategoricalConcept("/foo//bar", "bar", "Bar", "my_dataset", "foo!", List.of("a", "b"), true, "", List.of(), Map.of());
-        Mockito.when(conceptService.conceptDetail("my_dataset", "/foo//bar"))
-            .thenReturn(Optional.of(expected));
+        Mockito.when(conceptService.conceptDetail("my_dataset", "/foo//bar")).thenReturn(Optional.of(expected));
 
         ResponseEntity<Concept> actual = subject.conceptDetail("my_dataset", "/foo//bar");
 
@@ -67,8 +64,7 @@ class ConceptControllerTest {
 
     @Test
     void shouldNotGetConceptDetails() {
-        Mockito.when(conceptService.conceptDetail("my_dataset", "/foo//asdsad"))
-            .thenReturn(Optional.empty());
+        Mockito.when(conceptService.conceptDetail("my_dataset", "/foo//asdsad")).thenReturn(Optional.empty());
 
         ResponseEntity<Concept> actual = subject.conceptDetail("my_dataset", "/foo//bar");
 
@@ -79,13 +75,11 @@ class ConceptControllerTest {
     void shouldGetConceptTree() {
         Concept fooBar =
             new CategoricalConcept("/foo//bar", "bar", "Bar", "my_dataset", "foo!", List.of("a", "b"), true, "", List.of(), Map.of());
-        Concept fooBaz =
-            new ContinuousConcept("/foo//baz", "baz", "Baz", "my_dataset", "foo!", true, 0F, 100F, "", Map.of());
+        Concept fooBaz = new ContinuousConcept("/foo//baz", "baz", "Baz", "my_dataset", "foo!", true, 0F, 100F, "", Map.of());
         CategoricalConcept foo =
             new CategoricalConcept("/foo", "foo", "Foo", "my_dataset", "foo!", List.of(), true, "", List.of(fooBar, fooBaz), Map.of());
 
-        Mockito.when(conceptService.conceptTree("my_dataset", "/foo", 1))
-            .thenReturn(Optional.of(foo));
+        Mockito.when(conceptService.conceptTree("my_dataset", "/foo", 1)).thenReturn(Optional.of(foo));
 
         ResponseEntity<Concept> actual = subject.conceptTree("my_dataset", "/foo", 1);
 
@@ -97,13 +91,11 @@ class ConceptControllerTest {
     void shouldGetNotConceptTreeForLargeDepth() {
         Concept fooBar =
             new CategoricalConcept("/foo//bar", "bar", "Bar", "my_dataset", "foo!", List.of("a", "b"), true, "", List.of(), Map.of());
-        Concept fooBaz =
-            new ContinuousConcept("/foo//baz", "baz", "Baz", "my_dataset", "foo!", true, 0F, 100F, "", Map.of());
+        Concept fooBaz = new ContinuousConcept("/foo//baz", "baz", "Baz", "my_dataset", "foo!", true, 0F, 100F, "", Map.of());
         CategoricalConcept foo =
             new CategoricalConcept("/foo", "foo", "Foo", "my_dataset", "foo!", List.of(), true, "", List.of(fooBar, fooBaz), Map.of());
 
-        Mockito.when(conceptService.conceptTree("my_dataset", "/foo", 1))
-            .thenReturn(Optional.of(foo));
+        Mockito.when(conceptService.conceptTree("my_dataset", "/foo", 1)).thenReturn(Optional.of(foo));
 
         // concept.tree.max_depth=1
         ResponseEntity<Concept> actual = subject.conceptTree("my_dataset", "/foo//bar", 2);
@@ -115,12 +107,10 @@ class ConceptControllerTest {
     void shouldGetNotConceptTreeForNegativeDepth() {
         Concept fooBar =
             new CategoricalConcept("/foo//bar", "bar", "Bar", "my_dataset", "foo!", List.of("a", "b"), true, "", List.of(), Map.of());
-        Concept fooBaz =
-            new ContinuousConcept("/foo//baz", "baz", "Baz", "my_dataset", "foo!", true, 0F, 100F, "", Map.of());
+        Concept fooBaz = new ContinuousConcept("/foo//baz", "baz", "Baz", "my_dataset", "foo!", true, 0F, 100F, "", Map.of());
         CategoricalConcept foo =
             new CategoricalConcept("/foo", "foo", "Foo", "my_dataset", "foo!", List.of(), true, "", List.of(fooBar, fooBaz), Map.of());
-        Mockito.when(conceptService.conceptTree("my_dataset", "/foo", -1))
-            .thenReturn(Optional.of(foo));
+        Mockito.when(conceptService.conceptTree("my_dataset", "/foo", -1)).thenReturn(Optional.of(foo));
 
         // concept.tree.max_depth=1
         ResponseEntity<Concept> actual = subject.conceptTree("my_dataset", "/foo//bar", 2);
@@ -132,13 +122,11 @@ class ConceptControllerTest {
     void shouldNotGetConceptTreeWhenConceptDNE() {
         Concept fooBar =
             new CategoricalConcept("/foo//bar", "bar", "Bar", "my_dataset", "foo!", List.of("a", "b"), true, "", List.of(), Map.of());
-        Concept fooBaz =
-            new ContinuousConcept("/foo//baz", "baz", "Baz", "my_dataset", "foo!", true, 0F, 100F, "", Map.of());
+        Concept fooBaz = new ContinuousConcept("/foo//baz", "baz", "Baz", "my_dataset", "foo!", true, 0F, 100F, "", Map.of());
         CategoricalConcept foo =
             new CategoricalConcept("/foo", "foo", "Foo", "my_dataset", "foo!", List.of(), true, "", List.of(fooBar, fooBaz), Map.of());
 
-        Mockito.when(conceptService.conceptTree("my_dataset", "/foo", 1))
-            .thenReturn(Optional.of(foo));
+        Mockito.when(conceptService.conceptTree("my_dataset", "/foo", 1)).thenReturn(Optional.of(foo));
 
         ResponseEntity<Concept> actual = subject.conceptTree("my_dataset", "/asdsadasd", 1);
 
@@ -148,21 +136,30 @@ class ConceptControllerTest {
     @Test
     void shouldDumpConcepts() {
         Concept fooBar = new CategoricalConcept(
-            "/foo//bar", "bar", "Bar", "my_dataset", "foo!", List.of("a", "b"), true, "", List.of(),
-            Map.of("key", "value")
+            "/foo//bar", "bar", "Bar", "my_dataset", "foo!", List.of("a", "b"), true, "", List.of(), Map.of("key", "value")
         );
-        Concept fooBaz = new ContinuousConcept(
-            "/foo//baz", "baz", "Baz", "my_dataset", "foo!", true, 0F, 100F, "",
-            Map.of("key", "value")
-        );
+        Concept fooBaz = new ContinuousConcept("/foo//baz", "baz", "Baz", "my_dataset", "foo!", true, 0F, 100F, "", Map.of("key", "value"));
         List<Concept> concepts = List.of(fooBar, fooBaz);
         PageRequest page = PageRequest.of(0, 10);
-        Mockito.when(conceptService.listDetailedConcepts(new Filter(List.of(), "", List.of()), page))
-            .thenReturn(concepts);
+        Mockito.when(conceptService.listDetailedConcepts(new Filter(List.of(), "", List.of()), page)).thenReturn(concepts);
 
         ResponseEntity<Page<Concept>> actual = subject.dumpConcepts(0, 10);
 
         Assertions.assertEquals(concepts, actual.getBody().getContent());
         Assertions.assertEquals(HttpStatus.OK, actual.getStatusCode());
+    }
+
+    @Test
+    void shouldReturnConceptsWithMeta() {
+        CategoricalConcept fooBar = new CategoricalConcept(
+            "/foo//bar", "bar", "Bar", "my_dataset", "foo!", List.of("a", "b"), true, "", List.of(), Map.of("key", "value")
+        );
+        Concept fooBaz = new ContinuousConcept("/foo//baz", "baz", "Baz", "my_dataset", "foo!", true, 0F, 100F, "", Map.of("key", "value"));
+        List<Concept> concepts = List.of(fooBar, fooBaz);
+        List<String> conceptPaths = List.of("/foo//bar", "/foo//bar");
+        Mockito.when(conceptService.conceptsWithDetail(conceptPaths)).thenReturn(concepts);
+        ResponseEntity<List<Concept>> listResponseEntity = subject.conceptsDetail(conceptPaths);
+        Assertions.assertEquals(HttpStatus.OK, listResponseEntity.getStatusCode());
+        Assertions.assertEquals(concepts, listResponseEntity.getBody());
     }
 }

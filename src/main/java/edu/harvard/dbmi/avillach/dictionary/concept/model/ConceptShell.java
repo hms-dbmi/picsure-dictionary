@@ -1,6 +1,6 @@
 package edu.harvard.dbmi.avillach.dictionary.concept.model;
 
-import jakarta.annotation.Nullable;
+import edu.harvard.dbmi.avillach.dictionary.dataset.Dataset;
 
 import java.util.List;
 import java.util.Map;
@@ -33,7 +33,7 @@ public record ConceptShell(String conceptPath, String dataset) implements Concep
     }
 
     @Override
-    public Concept study() {
+    public Dataset study() {
         return null;
     }
 
@@ -58,7 +58,7 @@ public record ConceptShell(String conceptPath, String dataset) implements Concep
     }
 
     @Override
-    public Concept withStudy(Concept study) {
+    public Concept withStudy(Dataset study) {
         return this;
     }
 
