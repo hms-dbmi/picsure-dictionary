@@ -18,6 +18,10 @@ class JsonBlobParserTest {
     void parseValues() {
         Double v = jsonBlobParser.parseFromIndex("[-1.0,4.9E-324]", 1);
         assertNotNull(v);
-        System.out.println(v);
+        assertEquals(4.9E-324, v);
+
+        v = jsonBlobParser.parseFromIndex("[-1.0,4.9E-324]", 0);
+        assertNotNull(v);
+        assertEquals(-1, v);
     }
 }
