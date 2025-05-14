@@ -38,11 +38,11 @@ public class JsonBlobParser {
         }
     }
 
-    public double parseMin(String valuesArr) {
+    public Double parseMin(String valuesArr) {
         return parseFromIndex(valuesArr, 0);
     }
 
-    protected double parseFromIndex(String valuesArr, int index) {
+    protected Double parseFromIndex(String valuesArr, int index) {
         try {
             JSONArray arr = new JSONArray(valuesArr);
             if (arr.length() != 2) {
@@ -66,7 +66,7 @@ public class JsonBlobParser {
         }
     }
 
-    public double parseMax(String valuesArr) {
+    public Double parseMax(String valuesArr) {
         return parseFromIndex(valuesArr, 1);
     }
 
