@@ -4,6 +4,8 @@ import edu.harvard.dbmi.avillach.dictionary.concept.ConceptFilterQueryGenerator;
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
 import edu.harvard.dbmi.avillach.dictionary.filter.QueryParamPair;
 import edu.harvard.dbmi.avillach.dictionary.legacysearch.model.SearchResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +20,7 @@ import static edu.harvard.dbmi.avillach.dictionary.util.QueryUtility.ALLOW_FILTE
 @Repository
 public class LegacySearchRepository {
 
+    private static final Logger log = LoggerFactory.getLogger(LegacySearchRepository.class);
     private final ConceptFilterQueryGenerator filterGen;
     private final NamedParameterJdbcTemplate template;
     private final List<String> disallowedMetaFields;
@@ -72,7 +75,7 @@ public class LegacySearchRepository {
             ORDER BY concepts_filtered_sorted.rank DESC, concept_node.concept_node_id ASC
             """;
         MapSqlParameterSource params = filterQ.params().addValue("disallowed_meta_keys", disallowedMetaFields);
-
+        log.info(sql);
         return template.query(sql, params, searchResultRowMapper);
     }
 
