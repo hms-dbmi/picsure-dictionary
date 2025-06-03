@@ -4,8 +4,12 @@ import edu.harvard.dbmi.avillach.dictionary.concept.model.CategoricalConcept;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.ContinuousConcept;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -14,6 +18,8 @@ import java.util.stream.Collectors;
 
 @Component
 public class ConceptResultSetUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(ConceptResultSetUtil.class);
 
     public CategoricalConcept mapCategorical(ResultSet rs) throws SQLException {
         return new CategoricalConcept(
@@ -50,21 +56,35 @@ public class ConceptResultSetUtil {
         }
     }
 
-    public Integer parseMin(String valuesArr) {
+    public Float parseMin(String valuesArr) {
+        return parseFromIndex(valuesArr, 0);
+    }
+
+    private Float parseFromIndex(String valuesArr, int index) {
         try {
             JSONArray arr = new JSONArray(valuesArr);
-            return arr.length() == 2 ? arr.getInt(0) : 0;
+            if (arr.length() != 2) {
+                return 0F;
+            }
+            Object raw = arr.get(index);
+            return switch (raw) {
+                case Double d -> d.floatValue();
+                case Integer i -> i.floatValue();
+                case String s -> Double.valueOf(s).floatValue();
+                case BigDecimal d -> d.floatValue();
+                case BigInteger i -> i.floatValue();
+                default -> 0f;
+            };
         } catch (JSONException ex) {
-            return 0;
+            log.warn("Invalid json array for values: ", ex);
+            return 0F;
+        } catch (NumberFormatException ex) {
+            log.warn("Valid json array but invalid val within: ", ex);
+            return 0F;
         }
     }
 
-    public Integer parseMax(String valuesArr) {
-        try {
-            JSONArray arr = new JSONArray(valuesArr);
-            return arr.length() == 2 ? arr.getInt(1) : 0;
-        } catch (JSONException ex) {
-            return 0;
-        }
+    public Float parseMax(String valuesArr) {
+        return parseFromIndex(valuesArr, 1);
     }
 }

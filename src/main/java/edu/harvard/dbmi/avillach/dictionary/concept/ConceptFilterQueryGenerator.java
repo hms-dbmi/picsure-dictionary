@@ -3,6 +3,8 @@ package edu.harvard.dbmi.avillach.dictionary.concept;
 import edu.harvard.dbmi.avillach.dictionary.facet.Facet;
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
 import edu.harvard.dbmi.avillach.dictionary.filter.QueryParamPair;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Component;
@@ -14,6 +16,22 @@ import java.util.stream.Collectors;
 
 @Component
 public class ConceptFilterQueryGenerator {
+    private final List<String> disallowedMetaFields;
+
+    private static final String RANK_ADJUSTMENTS = """
+        , allow_filtering AS (
+            SELECT
+                concept_node.concept_node_id AS concept_node_id,
+                (string_agg(concept_node_meta.value, ' ') NOT LIKE '%' || 'true' || '%')::int AS rank_adjustment
+            FROM
+                concept_node
+                JOIN concept_node_meta ON
+                    concept_node.concept_node_id = concept_node_meta.concept_node_id
+                    AND concept_node_meta.KEY IN (:disallowed_meta_keys)
+            GROUP BY
+                concept_node.concept_node_id
+        )
+        """;
 
     private static final String CONSENT_QUERY = """
                 dataset.dataset_id IN (
@@ -24,8 +42,24 @@ public class ConceptFilterQueryGenerator {
                     WHERE
                         concat(dataset.ref, '.', consent.consent_code) IN (:consents) OR
                         (dataset.ref IN (:consents) AND consent.consent_code = '')
+                    UNION
+                    SELECT
+                        dataset_harmonization.harmonized_dataset_id
+                    FROM consent
+                        JOIN dataset_harmonization ON dataset_harmonization.source_dataset_id = consent.dataset_id
+                        LEFT JOIN dataset ON dataset.dataset_id = dataset_harmonization.source_dataset_id
+                    WHERE
+                        concat(dataset.ref, '.', consent.consent_code) IN (:consents) OR
+                        (dataset.ref IN (:consents) AND consent.consent_code = '')
                 ) AND
                 """;
+
+    @Autowired
+    public ConceptFilterQueryGenerator(
+        @Value("${filtering.unfilterable_concepts}") List<String> disallowedMetaFields
+    ) {
+        this.disallowedMetaFields = disallowedMetaFields;
+    }
 
     /**
      * This generates a query that will return a list of concept_node IDs for the given filter.
@@ -41,6 +75,7 @@ public class ConceptFilterQueryGenerator {
      */
     public QueryParamPair generateFilterQuery(Filter filter, Pageable pageable) {
         MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("disallowed_meta_keys", disallowedMetaFields);
         List<String> clauses = new java.util.ArrayList<>(List.of());
         if (!CollectionUtils.isEmpty(filter.facets())) {
             clauses.addAll(createFacetFilter(filter, params));
@@ -59,11 +94,19 @@ public class ConceptFilterQueryGenerator {
             WITH q AS (
                 %s
             )
-            SELECT concept_node_id
+            %s
+            SELECT q.concept_node_id AS concept_node_id, max((1 + rank) * coalesce(rank_adjustment, 1)) AS rank
             FROM q
-            GROUP BY concept_node_id
-            ORDER BY max(rank) DESC
-            """.formatted(query);
+            LEFT JOIN allow_filtering ON allow_filtering.concept_node_id = q.concept_node_id
+            GROUP BY q.concept_node_id
+            ORDER BY max((1 + rank) * coalesce(rank_adjustment, 1)) DESC, q.concept_node_id ASC
+            """.formatted(query, RANK_ADJUSTMENTS);
+        // explanation of ORDER BY max((1 + rank) * coalesce(rank_adjustment, 1)) DESC
+        // you want to sort the best matches first, BUT anything that is marked as unfilterable should be put last
+        // coalesce will return the first non null value; this solves rows that aren't marked as filterable or not
+        // I then multiply that by 1 + rank instead of just rank so that a rank value of 0 for an unfilterable var
+        // is placed below a rank value of 0 for a filterable var
+        // Finally, I add the concept node id to the sort to keep it stable for ties, otherwise pagination gets weird
 
         if (pageable.isPaged()) {
             superQuery = superQuery + """
@@ -73,6 +116,8 @@ public class ConceptFilterQueryGenerator {
             params.addValue("limit", pageable.getPageSize())
                 .addValue("offset", pageable.getOffset());
         }
+
+        superQuery = " concepts_filtered_sorted AS (\n" + superQuery + "\n)";
 
 
         return new QueryParamPair(superQuery, params);

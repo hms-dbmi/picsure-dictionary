@@ -395,6 +395,7 @@ COPY public.concept_node (concept_node_id, dataset_id, name, display, concept_ty
 267	14	Low coverage WGS	Low coverage WGS	categorical	\\Variant Data Type\\Low coverage WGS\\	265	'coverag':5,8,11 'data':2 'low':4,7,10 'true':13 'type':3 'variant':1 'wgs':6,9,12
 268	14	WES	WES	categorical	\\Variant Data Type\\WES\\	265	'data':2 'exom':7 'sequenc':8 'true':9 'type':3 'variant':1 'wes':4,5 'whole':6
 269	14	WGS	WGS	categorical	\\Variant Data Type\\WGS\\	265	'data':2 'genom':7 'sequenc':8 'true':9 'type':3 'variant':1 'wgs':4,5 'whole':6
+270	26	harmonized_var	harmonized_var	continuous	\\phs003566\\harmonized_var\\	263	'ecgsamplebas':5,8 'origin':4,7 'phs003566':1 'visit01':2,3,6
 \.
 
 
@@ -404,24 +405,24 @@ COPY public.concept_node (concept_node_id, dataset_id, name, display, concept_ty
 
 COPY public.concept_node_meta (concept_node_meta_id, concept_node_id, key, value) FROM stdin;
 19	186	description	Approximate Synonyms:\nSevere persistent allergic asthma in status asthmaticus\nSevere persistent allergic asthma with status asthmaticus\nSevere persistent asthma in status asthmaticus\nSevere persistent asthma with allergic rhinitis in status asthmaticus\nSevere persistent asthma with allergic rhinitis with status asthmaticus
-20	186	values	J45.52 Severe persistent asthma with status asthmaticus
+20	186	values	["J45.52 Severe persistent asthma with status asthmaticus"]
 21	189	description	Approximate Synonyms:\nAcute exacerbation of asthma with allergic rhinitis\nAllergic asthma with acute exacerbation\nAsthma, with acute exacerbation (flare-up)\nAsthma, with allergic rhinitis with acute exacerbation\nExacerbation of asthma
-22	189	values	J45.901 Unspecified asthma with (acute) exacerbation
+22	189	values	["J45.901 Unspecified asthma with (acute) exacerbation"]
 23	190	description	Approximate Synonyms:\nAsthma with allergic rhinitis in status asthmaticus\nAsthma with allergic rhinitis with status asthmaticus\nAsthma with status\nAsthma with status asthmaticus\nAsthma, allergic with status asthmaticus\nExtrinsic asthma with status asthmaticus
-24	190	values	J45.902 Unspecified asthma with status asthmaticus
+24	190	values	["J45.902 Unspecified asthma with status asthmaticus"]
 25	211	description	GIC biosample: wholeblood
 26	211	data_source	Biosample
-27	212	values	TRUE
-28	214	values	TRUE
+27	212	values	["TRUE"]
+28	214	values	["TRUE"]
 29	216	description	Those patients who align with the IRB Phase 2 protocols
-30	216	values	GIC Consent
+30	216	values	["GIC Consent"]
 31	217	description	Those patients who DO NOT align with the IRB Phase 2 protocols
-32	217	values	GIC Legacy Consent
+32	217	values	["GIC Legacy Consent"]
 33	218	description	Patients who have waived consent
-34	218	values	Waiver of Consent
+34	218	values	["Waiver of Consent"]
 35	222	description	Heart rate is taken by the automated blood pressure/heart rate monitor and captured directly into the computer system. In the event the heart rate is not captured automatically at the end of stage 1, the technician would manually enter the readings from the heart rate monitor.
 37	225	description	Including living and deceased, were any of {SP's/your} close biological that is, blood relatives including father, mother, sisters or brothers, ever told by a health professional that they had a heart attack or angina (an-gi-na) before the age of 50?
-38	225	values	Yes
+38	225	values	["Yes"]
 39	229	description	# 12 OZ CUPS OF CAFFEINATED COLA / DAY
 41	229	stigmatized	false
 42	229	unique_identifier	false
@@ -438,7 +439,7 @@ COPY public.concept_node_meta (concept_node_meta_id, concept_node_id, key, value
 55	235	free_text	false
 56	235	bdc_open_access	true
 57	239	description	Most recent occupation (A)
-58	239	values	ACCOUNTANT
+58	239	values	["ACCOUNTANT"]
 59	241	description	Age
 61	241	stigmatized	false
 62	241	unique_identifier	false
@@ -450,7 +451,7 @@ COPY public.concept_node_meta (concept_node_meta_id, concept_node_id, key, value
 69	242	free_text	false
 70	242	bdc_open_access	true
 71	244	description	Patient age at transplant, years
-72	244	values	42
+72	244	values	[42]
 73	244	stigmatized	false
 74	244	unique_identifier	false
 75	244	free_text	false
@@ -458,13 +459,13 @@ COPY public.concept_node_meta (concept_node_meta_id, concept_node_id, key, value
 77	244	hct status	pre-hct
 78	244	computed variable	yes
 79	245	description	Race (regrouped)
-80	245	values	Not Reported
+80	245	values	["Not Reported"]
 81	245	stigmatized	false
 82	245	unique_identifier	false
 83	245	free_text	false
 84	245	bdc_open_access	true
 85	246	description	Transplant Number
-86	246	values	1
+86	246	values	[1]
 87	246	stigmatized	true
 88	246	unique_identifier	false
 89	246	free_text	false
@@ -472,44 +473,44 @@ COPY public.concept_node_meta (concept_node_meta_id, concept_node_id, key, value
 91	246	hct status	pre-hct
 92	246	computed variable	yes
 93	248	description	Participant's age (category)
-94	248	values	21
+94	248	values	[21]
 95	248	stigmatized	false
 96	248	unique_identifier	false
 97	248	free_text	false
 98	248	bdc_open_access	true
 99	249	description	Smoker status
-100	249	values	true
+100	249	values	["true"]
 101	249	stigmatized	false
 102	249	unique_identifier	false
 103	249	free_text	false
 104	249	bdc_open_access	true
 105	253	description	(AFC) Reason for ending future contact: Withdrew consent for future nuMoM2b contact
-106	253	values	No
+106	253	values	["No"]
 107	253	unique_identifier	false
 108	253	free_text	false
 109	253	bdc_open_access	true
 110	255	description	(V5A) Which of the following problems have a doctor or health care professional told you that you have with your kidney?: Other - Specify Field
-111	255	values	infection
+111	255	values	["infection"]
 112	255	unique_identifier	false
 113	255	free_text	true
 114	255	bdc_open_access	false
 115	258	description	(T01) Are you currently prescribed medication for your high blood pressure?
-116	258	values	Yes
+116	258	values	["Yes"]
 117	258	unique_identifier	false
 118	258	free_text	false
 119	258	bdc_open_access	true
 120	266	description	Genotype array
-121	266	values	TRUE
+121	266	values	["TRUE"]
 122	267	description	Low coverage WGS
-123	267	values	TRUE
+123	267	values	["TRUE"]
 124	268	description	Whole exome sequencing
 40	229	values	[0, 3]
 46	232	values	[0, 1]
-52	235	values	[0, 5]
-60	241	values	[0, 21]
-125	268	values	TRUE
+52	235	values	[0.57,6.77]
+60	241	values	["5E-21", "7E+33"]
+125	268	values	["TRUE"]
 126	269	description	Whole genome sequencing
-127	269	values	TRUE
+127	269	values	["TRUE"]
 128	227	description	Clinic Exam, Original Cohort Exam 19
 129	230	description	Clinic Exam, Original Cohort Exam 20
 130	233	description	Clinic Exam, Offspring Cohort Exam 4
@@ -518,6 +519,7 @@ COPY public.concept_node_meta (concept_node_meta_id, concept_node_id, key, value
 133	211	values	[100, 500]
 36	222	values	[0, 150]
 66	242	values	[0, 30]
+134	270	values	[0, 21]
 \.
 
 
@@ -556,6 +558,7 @@ COPY public.dataset (dataset_id, ref, full_name, abbreviation, description) FROM
 23	phs002808	Nulliparous Pregnancy Outcomes Study: Monitoring Mothers-to-be Heart Health Study (nuMoM2b Heart Health Study)	nuMoM2b	
 24	phs003566	Systolic Blood Pressure Intervention Trial (SPRINT-Imaging)	SPRINT	
 25	phs001963	DEMENTIA-SEQ: WGS in Lewy Body Dementia and Frontotemporal Dementia	DEMENTIA-SEQ	
+26	harmonized	My Cool Harmonized Dataset	abv	harmony
 \.
 
 
@@ -1050,6 +1053,23 @@ ALTER TABLE ONLY public.dataset_meta
 
 ALTER TABLE ONLY public.concept_node
     ADD CONSTRAINT fk_study FOREIGN KEY (dataset_id) REFERENCES public.dataset(dataset_id);
+
+
+CREATE TABLE IF NOT EXISTS public.dataset_harmonization
+(
+    dataset_harmonization_id INT NOT NULL GENERATED BY DEFAULT AS IDENTITY,
+    harmonized_dataset_id INT NOT NULL,
+    source_dataset_id INT NOT NULL,
+    UNIQUE (harmonized_dataset_id, source_dataset_id),
+    CONSTRAINT fk_harmonized_dataset_id FOREIGN KEY (harmonized_dataset_id) REFERENCES public.dataset (dataset_id),
+    CONSTRAINT fk_source_dataset_id FOREIGN KEY (source_dataset_id) REFERENCES public.dataset (dataset_id)
+);
+
+INSERT INTO public.dataset_harmonization (dataset_harmonization_id, harmonized_dataset_id, source_dataset_id) VALUES
+    (1, 26, 25),
+    (1, 26, 24),
+    (1, 26, 23),
+    (1, 26, 22);
 
 
 --
