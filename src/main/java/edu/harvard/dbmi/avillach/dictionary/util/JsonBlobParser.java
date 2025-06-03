@@ -58,10 +58,10 @@ public class JsonBlobParser {
                 default -> 0D;
             };
         } catch (JSONException ex) {
-            log.warn("Invalid json array for values: ", ex);
+            log.warn("Invalid json array for values: {}", valuesArr, ex);
             return 0D;
         } catch (NumberFormatException ex) {
-            log.warn("Valid json array but invalid val within: ", ex);
+            log.warn("Valid json array but invalid val within: {}", valuesArr, ex);
             return 0D;
         }
     }
