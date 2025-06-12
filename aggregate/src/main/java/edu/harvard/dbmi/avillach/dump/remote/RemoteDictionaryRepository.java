@@ -165,6 +165,7 @@ public class RemoteDictionaryRepository {
     }
 
     private Set<Integer> addConcepts(List<ConceptNodeDump> concepts, Map<String, Integer> datasets) {
+        log.info("Starting concept ingest");
         concepts.forEach(c -> c.setParentId(null));
         String childSQL = """
             INSERT INTO concept_node (DATASET_ID, NAME, DISPLAY, CONCEPT_TYPE, CONCEPT_PATH, PARENT_ID)
@@ -182,7 +183,9 @@ public class RemoteDictionaryRepository {
             """;
         Set<Integer> allConcepts = new HashSet<>();
         List<ConceptNodeDump> currentTier = concepts;
+        int tier = 0;
         while (!currentTier.isEmpty()) {
+            log.info("Ingesting tier {}", tier++);
             for (ConceptNodeDump concept : currentTier) {
                 concept.children().forEach(c -> c.setParentPath(concept.conceptPath()));
                 String sql = concept.parentId() == null ? rootSQL : childSQL;
@@ -191,6 +194,7 @@ public class RemoteDictionaryRepository {
             }
             currentTier = currentTier.stream().map(ConceptNodeDump::children).flatMap(List::stream).toList();
         }
+        log.info("Done ingesting concepts");
         return allConcepts;
     }
 
