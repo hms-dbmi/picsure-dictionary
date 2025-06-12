@@ -10,11 +10,14 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Gatherer;
+import java.util.stream.Gatherers;
 
 @Repository
 public class DumpRepository {
@@ -80,10 +83,13 @@ public class DumpRepository {
             """;
         while (!nodes.isEmpty()) {
             parents = nodes.stream().collect(Collectors.toMap(ConceptNodeDump::conceptNodeId, Function.identity()));
-            MapSqlParameterSource params = new MapSqlParameterSource("parentIds", parents.keySet());
-            nodes = template.query(getNextTierSQL, params, conceptNodeDumpExtractor);
-            for (ConceptNodeDump node : nodes) {
-                parents.get(node.parentId()).addChild(node);
+            nodes = new ArrayList<>();
+            for (List<Integer> parentBucket : parents.keySet().stream().gather(Gatherers.windowFixed(1000)).toList()) {
+                MapSqlParameterSource params = new MapSqlParameterSource("parentIds", parentBucket);
+                nodes.addAll(template.query(getNextTierSQL, params, conceptNodeDumpExtractor));
+                for (ConceptNodeDump node : nodes) {
+                    parents.get(node.parentId()).addChild(node);
+                }
             }
         }
 
