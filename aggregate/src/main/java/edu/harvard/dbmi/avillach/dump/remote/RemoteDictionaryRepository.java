@@ -2,16 +2,20 @@ package edu.harvard.dbmi.avillach.dump.remote;
 
 import edu.harvard.dbmi.avillach.dump.entities.*;
 import edu.harvard.dbmi.avillach.dump.util.MapExtractor;
+import org.apache.catalina.util.ExactRateLimiter;
+import org.apache.catalina.util.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.namedparam.SqlParameterSourceUtils;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 import java.util.stream.Gatherers;
 
@@ -173,39 +177,52 @@ public class RemoteDictionaryRepository {
         concepts.forEach(c -> c.setParentId(null));
         String childSQL = """
             INSERT INTO concept_node (DATASET_ID, NAME, DISPLAY, CONCEPT_TYPE, CONCEPT_PATH, PARENT_ID)
-            SELECT UNNEST(:datasetID::int[], :name::text[], :display::text[], :conceptType::text[], :conceptPath::text[], CONCEPT_NODE_ID)
+            SELECT :datasetRef, :name, :display, :conceptType, :conceptPath, CONCEPT_NODE_ID
             FROM concept_node AS parent
             WHERE parent.CONCEPT_PATH = :parentConceptPath
-            ON CONFLICT (md5(concept_path::text)) DO UPDATE SET NAME = EXCLUDED.NAME
-            RETURNING concept_node.CONCEPT_NODE_ID
+            ON CONFLICT (md5(concept_path::text)) DO NOTHING
             """;
         String rootSQL = """
             INSERT INTO concept_node (DATASET_ID, NAME, DISPLAY, CONCEPT_TYPE, CONCEPT_PATH)
-            VALUES (:datasetID, :name, :display, :conceptType, :conceptPath)
-            ON CONFLICT (md5(concept_path::text)) DO UPDATE SET NAME = EXCLUDED.NAME
-            RETURNING CONCEPT_NODE_ID
+            VALUES (:datasetRef, :name, :display, :conceptType, :conceptPath)
+            ON CONFLICT (md5(concept_path::text)) DO NOTHING
+            """;
+        String idSQL = """
+            WITH paths AS (SELECT unnest(:paths) AS CONCEPT)
+            SELECT CONCEPT_NODE_ID
+            FROM concept_node
+                INNER JOIN paths ON concept_node.concept_path = paths.CONCEPT
             """;
         Set<Integer> allConcepts = new HashSet<>();
-        List<ConceptNodeDump> currentTier = concepts;
         int tier = 0;
-        while (!currentTier.isEmpty()) {
+        int count = 0;
+        while (!concepts.isEmpty()) {
             log.info("Ingesting tier {}", tier++);
-            currentTier.stream().parallel().forEach(concept -> {
-                concept.children().forEach(c -> c.setParentPath(concept.conceptPath()));
-                String sql = concept.parentId() == null ? rootSQL : childSQL;
-                Integer conceptID = template.queryForObject(sql, createParamMap(concept, datasets), Integer.class);
-                allConcepts.add(conceptID);
-            });
-            currentTier = currentTier.stream().map(ConceptNodeDump::children).flatMap(List::stream).toList();
+            concepts.forEach(concept -> concept.children().forEach(c -> c.setParentPath(concept.conceptPath())));
+            String sql = concepts.getFirst().parentId() == null ? rootSQL : childSQL;
+            concepts.stream()
+                .gather(Gatherers.windowFixed(100))
+                .forEach(conceptBucket -> {
+                    template.batchUpdate(sql, conceptBucket.stream().map(c -> createParamMap(c, datasets)).toArray(MapSqlParameterSource[]::new));
+                    MapSqlParameterSource params = new MapSqlParameterSource("paths", conceptBucket.stream().map(ConceptNodeDump::conceptPath).toArray(String[]::new));
+                    List<Integer> conceptIds = template.queryForList(idSQL, params, Integer.class);
+                    allConcepts.addAll(conceptIds);
+                });
+            concepts = concepts.stream().map(ConceptNodeDump::children).flatMap(List::stream).toList();
+            count += concepts.size();
         }
         log.info("Done ingesting concepts");
         return allConcepts;
     }
 
     private MapSqlParameterSource createParamMap(ConceptNodeDump concept, Map<String, Integer> datasets) {
-        return new MapSqlParameterSource().addValue("datasetID", datasets.get(concept.datasetRef())).addValue("name", concept.name())
-            .addValue("display", concept.display()).addValue("conceptType", concept.conceptType())
-            .addValue("conceptPath", concept.conceptPath()).addValue("parentConceptPath", concept.parentPath());
+        return new MapSqlParameterSource()
+            .addValue("datasetRef", datasets.get(concept.datasetRef()))
+            .addValue("name", concept.name())
+            .addValue("display", concept.display())
+            .addValue("conceptType", concept.conceptType())
+            .addValue("conceptPath", concept.conceptPath())
+            .addValue("parentPath", concept.parentPath());
     }
 
     private Map<String, Integer> getDatasetRefs() {
