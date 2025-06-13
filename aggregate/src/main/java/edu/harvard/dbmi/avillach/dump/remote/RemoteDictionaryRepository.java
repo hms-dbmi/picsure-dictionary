@@ -5,6 +5,7 @@ import edu.harvard.dbmi.avillach.dump.util.MapExtractor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -12,16 +13,19 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Gatherers;
 
 @Repository
 public class RemoteDictionaryRepository {
 
     private static final Logger log = LoggerFactory.getLogger(RemoteDictionaryRepository.class);
     private final NamedParameterJdbcTemplate template;
+    private final JdbcTemplate namelessTemplate;
 
     @Autowired
-    public RemoteDictionaryRepository(NamedParameterJdbcTemplate template) {
+    public RemoteDictionaryRepository(NamedParameterJdbcTemplate template, JdbcTemplate namelessTemplate) {
         this.template = template;
+        this.namelessTemplate = namelessTemplate;
     }
 
     public LocalDateTime getUpdateTimestamp(String name) {
@@ -148,7 +152,7 @@ public class RemoteDictionaryRepository {
 
     public void addConceptsForSite(String name, List<ConceptNodeDump> concepts) {
         // initialize datasets if DNE
-        createEmptyDatasets(concepts.stream().map(ConceptNodeDump::datasetRef).toList());
+        createEmptyDatasets(concepts.stream().map(ConceptNodeDump::datasetRef).distinct().toList());
         Map<String, Integer> datasets = getDatasetRefs();
 
         // add the concepts one tier at a time
@@ -169,7 +173,7 @@ public class RemoteDictionaryRepository {
         concepts.forEach(c -> c.setParentId(null));
         String childSQL = """
             INSERT INTO concept_node (DATASET_ID, NAME, DISPLAY, CONCEPT_TYPE, CONCEPT_PATH, PARENT_ID)
-            SELECT :datasetID, :name, :display, :conceptType, :conceptPath, CONCEPT_NODE_ID
+            SELECT UNNEST(:datasetID::int[], :name::text[], :display::text[], :conceptType::text[], :conceptPath::text[], CONCEPT_NODE_ID)
             FROM concept_node AS parent
             WHERE parent.CONCEPT_PATH = :parentConceptPath
             ON CONFLICT (md5(concept_path::text)) DO UPDATE SET NAME = EXCLUDED.NAME
@@ -186,12 +190,12 @@ public class RemoteDictionaryRepository {
         int tier = 0;
         while (!currentTier.isEmpty()) {
             log.info("Ingesting tier {}", tier++);
-            for (ConceptNodeDump concept : currentTier) {
+            currentTier.stream().parallel().forEach(concept -> {
                 concept.children().forEach(c -> c.setParentPath(concept.conceptPath()));
                 String sql = concept.parentId() == null ? rootSQL : childSQL;
                 Integer conceptID = template.queryForObject(sql, createParamMap(concept, datasets), Integer.class);
                 allConcepts.add(conceptID);
-            }
+            });
             currentTier = currentTier.stream().map(ConceptNodeDump::children).flatMap(List::stream).toList();
         }
         log.info("Done ingesting concepts");
