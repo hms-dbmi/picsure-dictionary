@@ -179,7 +179,7 @@ public class RemoteDictionaryRepository {
             INSERT INTO concept_node (DATASET_ID, NAME, DISPLAY, CONCEPT_TYPE, CONCEPT_PATH, PARENT_ID)
             SELECT :datasetRef, :name, :display, :conceptType, :conceptPath, CONCEPT_NODE_ID
             FROM concept_node AS parent
-            WHERE parent.CONCEPT_PATH = :parentConceptPath
+            WHERE parent.CONCEPT_PATH = :parentPath
             ON CONFLICT (md5(concept_path::text)) DO NOTHING
             """;
         String rootSQL = """
