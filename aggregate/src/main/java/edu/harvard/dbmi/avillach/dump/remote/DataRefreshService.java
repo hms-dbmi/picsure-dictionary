@@ -37,7 +37,6 @@ public class DataRefreshService {
     public void refreshDictionary(RemoteDictionary dictionary) {
         log.info("Updating {}", dictionary.fullName());
         repository.dropValuesForSite(dictionary.name());
-        repository.pruneHangingEntries();
         log.info("All values for site {} have been dropped", dictionary.fullName());
         boolean success = true;
         for (int i = 0; i < updateSequence.size() && success; i++) {
@@ -50,6 +49,7 @@ public class DataRefreshService {
         } else {
             log.warn("Failed to refresh values for site {}", dictionary.fullName());
         }
+        repository.pruneHangingEntries();
     }
 
     @FunctionalInterface

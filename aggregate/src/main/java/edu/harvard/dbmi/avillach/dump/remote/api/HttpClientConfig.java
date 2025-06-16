@@ -34,20 +34,17 @@ public class HttpClientConfig {
             LOG.info("No proxy user found, making default client.");
             return HttpClients.custom().setConnectionManager(manager).build();
         }
-        RequestConfig config = RequestConfig.custom()
-            .setConnectionRequestTimeout(0)  // No timeout for getting a connection from pool
-            .setConnectTimeout(0)            // No timeout for establishing connection
-            .setSocketTimeout(0)             // No timeout between packets
+        RequestConfig config = RequestConfig.custom().setConnectionRequestTimeout(0) // No timeout for getting a connection from pool
+            .setConnectTimeout(0) // No timeout for establishing connection
+            .setSocketTimeout(0) // No timeout between packets
             .build();
 
-        HttpClients.custom()
-            .setDefaultRequestConfig(config)
-            .build();
+        HttpClients.custom().setDefaultRequestConfig(config).build();
         LOG.info("Found proxy user {}, will configure proxy", proxyUser);
 
         return HttpClients.custom()
             .setDefaultRequestConfig(config)
-            .setConnectionManager(new PoolingHttpClientConnectionManager())
+            .setDefaultRequestConfig(config).setConnectionManager(new PoolingHttpClientConnectionManager())
             .useSystemProperties()
             .build();
     }

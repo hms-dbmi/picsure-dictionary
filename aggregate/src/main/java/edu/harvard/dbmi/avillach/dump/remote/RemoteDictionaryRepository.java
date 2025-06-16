@@ -13,6 +13,10 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSourceUtils;
 import org.springframework.stereotype.Repository;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.Semaphore;
@@ -24,12 +28,10 @@ public class RemoteDictionaryRepository {
 
     private static final Logger log = LoggerFactory.getLogger(RemoteDictionaryRepository.class);
     private final NamedParameterJdbcTemplate template;
-    private final JdbcTemplate namelessTemplate;
 
     @Autowired
-    public RemoteDictionaryRepository(NamedParameterJdbcTemplate template, JdbcTemplate namelessTemplate) {
+    public RemoteDictionaryRepository(NamedParameterJdbcTemplate template) {
         this.template = template;
-        this.namelessTemplate = namelessTemplate;
     }
 
     public LocalDateTime getUpdateTimestamp(String name) {
@@ -153,11 +155,12 @@ public class RemoteDictionaryRepository {
         log.info("Pruned {} facet metas", pruned);
         log.info("Pruning facet metas");
         pruned = template.update(facetMetaSQL, new MapSqlParameterSource());
-        log.info("Pruned {} facets", pruned);
+        log.info("Pruned {} facet metas", pruned);
         log.info("Pruning facets");
         pruned = template.update(facetSQL, new MapSqlParameterSource());
+        log.info("Pruned {} facets", pruned);
         log.info("Pruning concepts");
-        pruned = template.queryForObject(conceptSQL, new MapSqlParameterSource(), Integer.class);
+        template.queryForObject(conceptSQL, new MapSqlParameterSource(), Integer.class);
         log.info("Pruned {} concepts", pruned);
         log.info("Pruning facet category metas");
         pruned = template.update(facetCategoryMetaSQL, new MapSqlParameterSource());
@@ -214,12 +217,12 @@ public class RemoteDictionaryRepository {
             log.info("Ingesting tier {}", tier++);
             concepts.forEach(concept -> concept.children().forEach(c -> c.setParentPath(concept.conceptPath())));
             String sql = concepts.getFirst().parentId() == null ? rootSQL : childSQL;
-            concepts.stream()
-                .gather(Gatherers.windowFixed(100))
-                .forEach(conceptBucket -> {
-                    template.batchUpdate(sql, conceptBucket.stream().map(c -> createParamMap(c, datasets)).toArray(MapSqlParameterSource[]::new));
-                    MapSqlParameterSource params = new MapSqlParameterSource("paths", conceptBucket.stream().map(ConceptNodeDump::conceptPath).toArray(String[]::new));
-                    List<Integer> conceptIds = template.queryForList(idSQL, params, Integer.class);
+            concepts.stream().gather(Gatherers.windowFixed(100)).forEach(conceptBucket -> {
+                template
+                    .batchUpdate(sql, conceptBucket.stream().map(c -> createParamMap(c, datasets)).toArray(MapSqlParameterSource[]::new));
+                MapSqlParameterSource params =
+                    new MapSqlParameterSource("paths", conceptBucket.stream().map(ConceptNodeDump::conceptPath).toArray(String[]::new));
+                List<Integer> conceptIds = template.queryForList(idSQL, params, Integer.class);
                     allConcepts.addAll(conceptIds);
                 });
             concepts = concepts.stream().map(ConceptNodeDump::children).flatMap(List::stream).toList();

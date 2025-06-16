@@ -1130,3 +1130,5 @@ INSERT INTO public.concept_node__remote_dictionary (CONCEPT_NODE_ID, REMOTE_DICT
 -- PostgreSQL database dump complete
 --
 
+ALTER TABLE public.concept_node
+ALTER CONSTRAINT fk_parent DEFERRABLE INITIALLY DEFERRED;
