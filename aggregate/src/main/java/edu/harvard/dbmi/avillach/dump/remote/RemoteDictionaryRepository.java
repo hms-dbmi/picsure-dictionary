@@ -145,13 +145,26 @@ public class RemoteDictionaryRepository {
                 WHERE facet.facet_category_id = facet_category.facet_category_id
             )
             """;
-        template.update(facetConceptSQL, new MapSqlParameterSource());
-        template.update(conceptMetaSQL, new MapSqlParameterSource());
-        template.update(facetMetaSQL, new MapSqlParameterSource());
-        template.update(facetSQL, new MapSqlParameterSource());
-        template.queryForObject(conceptSQL, new MapSqlParameterSource(), Integer.class);
-        template.update(facetCategoryMetaSQL, new MapSqlParameterSource());
-        template.update(facetCategorySQL, new MapSqlParameterSource());
+        log.info("Pruning facet concepts");
+        int pruned = template.update(facetConceptSQL, new MapSqlParameterSource());
+        log.info("Pruned {} facet concepts", pruned);
+        log.info("Pruning concept metas");
+        pruned = template.update(conceptMetaSQL, new MapSqlParameterSource());
+        log.info("Pruned {} facet metas", pruned);
+        log.info("Pruning facet metas");
+        pruned = template.update(facetMetaSQL, new MapSqlParameterSource());
+        log.info("Pruned {} facets", pruned);
+        log.info("Pruning facets");
+        pruned = template.update(facetSQL, new MapSqlParameterSource());
+        log.info("Pruning concepts");
+        pruned = template.queryForObject(conceptSQL, new MapSqlParameterSource(), Integer.class);
+        log.info("Pruned {} concepts", pruned);
+        log.info("Pruning facet category metas");
+        pruned = template.update(facetCategoryMetaSQL, new MapSqlParameterSource());
+        log.info("Pruned {} facet category metas", pruned);
+        log.info("Pruning facet categories");
+        pruned = template.update(facetCategorySQL, new MapSqlParameterSource());
+        log.info("Pruned {} facet categories", pruned);
     }
 
     public void addConceptsForSite(String name, List<ConceptNodeDump> concepts) {
@@ -194,6 +207,7 @@ public class RemoteDictionaryRepository {
                 INNER JOIN paths ON concept_node.concept_path = paths.CONCEPT
             """;
         Set<Integer> allConcepts = new HashSet<>();
+
         int tier = 0;
         int count = 0;
         while (!concepts.isEmpty()) {
