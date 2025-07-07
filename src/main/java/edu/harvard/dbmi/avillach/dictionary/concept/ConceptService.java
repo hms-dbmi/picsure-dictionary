@@ -6,6 +6,7 @@ import edu.harvard.dbmi.avillach.dictionary.concept.model.ConceptShell;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.ContinuousConcept;
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +27,7 @@ public class ConceptService {
         this.conceptDecoratorService = conceptDecoratorService;
     }
 
+    @Cacheable("concepts")
     public List<Concept> listConcepts(Filter filter, Pageable page) {
         return conceptRepository.getConcepts(filter, page);
     }
@@ -40,6 +42,7 @@ public class ConceptService {
         }).toList();
     }
 
+    @Cacheable("concepts_count")
     public long countConcepts(Filter filter) {
         return conceptRepository.countConcepts(filter);
     }
@@ -49,16 +52,14 @@ public class ConceptService {
     }
 
     private Optional<Concept> getConcept(String dataset, String conceptPath, boolean addAncestors) {
-        Optional<Concept> concept = conceptRepository.getConcept(dataset, conceptPath)
-            .map(core -> {
-                    var meta = conceptRepository.getConceptMeta(dataset, conceptPath);
-                    return switch (core) {
-                        case ContinuousConcept cont -> new ContinuousConcept(cont, meta);
-                        case CategoricalConcept cat -> new CategoricalConcept(cat, meta);
-                        case ConceptShell ignored -> throw new RuntimeException("Concept shell escaped to API");
-                    };
-                }
-            );
+        Optional<Concept> concept = conceptRepository.getConcept(dataset, conceptPath).map(core -> {
+            var meta = conceptRepository.getConceptMeta(dataset, conceptPath);
+            return switch (core) {
+                case ContinuousConcept cont -> new ContinuousConcept(cont, meta);
+                case CategoricalConcept cat -> new CategoricalConcept(cat, meta);
+                case ConceptShell ignored -> throw new RuntimeException("Concept shell escaped to API");
+            };
+        });
         return addAncestors ? concept.map(conceptDecoratorService::populateParentConcepts) : concept;
     }
 
@@ -68,5 +69,9 @@ public class ConceptService {
 
     public Optional<Concept> conceptDetailWithoutAncestors(String dataset, String conceptPath) {
         return getConcept(dataset, conceptPath, false);
+    }
+
+    public List<Concept> conceptsWithDetail(List<String> conceptPaths) {
+        return this.conceptRepository.getConceptsByPathWithMetadata(conceptPaths);
     }
 }

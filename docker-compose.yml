@@ -5,14 +5,15 @@ services:
     container_name: dictionary-db
     image: postgres:16-alpine
     volumes:
-      - picsure-search:/var/lib/postgresql/data
-      - ./src/test/resources/seed.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+      - $DOCKER_CONFIG_DIR/dictionary/db/data:/var/lib/postgresql/data
+      - $DOCKER_CONFIG_DIR/dictionary/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
     env_file: .env
+    restart: always
     networks:
       - dictionary
   dictionary-api:
     container_name: dictionary-api
-    image: hmsdbmi-avl/uploader:1.0.0
+    image: avillach/dictionary-api:latest
     build: .
     depends_on:
       - dictionary-db
@@ -20,7 +21,19 @@ services:
     env_file: .env
     networks:
       - dictionary
-      - hpdsNet
+      - picsure
+  dictionary-dump:
+    container_name: dictionary-dump
+    image: avillach/dictionary-dump:latest
+    build: ./aggregate
+    depends_on:
+      - dictionary-db
+    restart: always
+    env_file: .env
+    volumes:
+      - $DOCKER_CONFIG_DIR/dictionary/dump/application.properties:/application.properties
+    networks:
+      - dictionary
       - picsure
 
 volumes:
@@ -28,7 +41,6 @@ volumes:
 
 networks:
   dictionary:
-  picsure:
     external: true
-  hpdsNet:
+  picsure:
     external: true

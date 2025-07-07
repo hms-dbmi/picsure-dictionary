@@ -4,10 +4,12 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
 
 @SpringBootTest
+@ActiveProfiles("test")
 class DashboardConfigTest {
 
     @Autowired
@@ -17,10 +19,8 @@ class DashboardConfigTest {
     void shouldGetColumns() {
         List<DashboardColumn> actual = subject.getColumns();
         List<DashboardColumn> expected = List.of(
-            new DashboardColumn("abbreviation", "Abbreviation"),
-            new DashboardColumn("name", "Name"),
-            new DashboardColumn("clinvars", "Clinical Variables"),
-            new DashboardColumn("melast", "This one goes last"),
+            new DashboardColumn("abbreviation", "Abbreviation"), new DashboardColumn("name", "Name"),
+            new DashboardColumn("clinvars", "Clinical Variables"), new DashboardColumn("melast", "This one goes last"),
             new DashboardColumn("participants", "Participants")
         );
 

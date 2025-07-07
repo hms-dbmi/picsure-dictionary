@@ -300,6 +300,19 @@ ALTER TABLE public.facet_meta ALTER COLUMN facet_meta_id ADD GENERATED ALWAYS AS
 );
 
 
+CREATE TABLE IF NOT EXISTS public.update_info (
+    LAST_UPDATED TIMESTAMP NOT NULL DEFAULT '2000-01-01 00:00:00',
+    DATABASE_VERSION INT NOT NULL DEFAULT 3
+);
+
+CREATE TABLE IF NOT EXISTS public.remote_dictionary (
+    REMOTE_DICTIONARY_ID SERIAL PRIMARY KEY,
+    NAME CHARACTER VARYING(512) NOT NULL,
+    UUID UUID NOT NULL,
+    LAST_UPDATED TIMESTAMP
+);
+
+
 --
 -- Data for Name: concept_node; Type: TABLE DATA; Schema: dict; Owner: picsure
 --
@@ -396,6 +409,7 @@ COPY public.concept_node (concept_node_id, dataset_id, name, display, concept_ty
 268	14	WES	WES	categorical	\\Variant Data Type\\WES\\	265	'data':2 'exom':7 'sequenc':8 'true':9 'type':3 'variant':1 'wes':4,5 'whole':6
 269	14	WGS	WGS	categorical	\\Variant Data Type\\WGS\\	265	'data':2 'genom':7 'sequenc':8 'true':9 'type':3 'variant':1 'wgs':4,5 'whole':6
 270	26	harmonized_var	harmonized_var	continuous	\\phs003566\\harmonized_var\\	263	'ecgsamplebas':5,8 'origin':4,7 'phs003566':1 'visit01':2,3,6
+271	26	value_example	value_example	continuous	\\phs003566\\value_example\\	263	'ecgsamplebas':5,8 'origin':4,7 'phs003566':1 'visit01':2,3,6
 \.
 
 
@@ -520,6 +534,7 @@ COPY public.concept_node_meta (concept_node_meta_id, concept_node_id, key, value
 36	222	values	[0, 150]
 66	242	values	[0, 30]
 134	270	values	[0, 21]
+135	271	values	['gremlin', 'origin']
 \.
 
 
@@ -737,6 +752,7 @@ COPY public.facet__concept_node (facet__concept_node_id, facet_id, concept_node_
 91	18	261
 92	20	229
 93	21	229
+94	21	271
 \.
 
 
@@ -756,6 +772,7 @@ COPY public.facet_category (facet_category_id, name, display, description) FROM 
 --
 
 COPY public.facet_category_meta (facet_category_meta_id, facet_category_id, key, value) FROM stdin;
+1	1	my_key	my_value
 \.
 
 
@@ -1071,6 +1088,43 @@ INSERT INTO public.dataset_harmonization (dataset_harmonization_id, harmonized_d
     (1, 26, 23),
     (1, 26, 22);
 
+
+INSERT INTO public.update_info (LAST_UPDATED, DATABASE_VERSION) VALUES
+    ('2020-02-02 00:00:00', 3);
+
+
+CREATE TABLE IF NOT EXISTS public.concept_node__remote_dictionary (
+    CONCEPT_NODE_ID integer NOT NULL,
+    REMOTE_DICTIONARY_ID integer NOT NULL,
+    CONSTRAINT fk_remote_dictionary FOREIGN KEY (REMOTE_DICTIONARY_ID) REFERENCES public.remote_dictionary(REMOTE_DICTIONARY_ID),
+    CONSTRAINT fk_concept_node FOREIGN KEY (CONCEPT_NODE_ID) REFERENCES public.concept_node(CONCEPT_NODE_ID)
+);
+
+INSERT INTO public.remote_dictionary (REMOTE_DICTIONARY_ID, NAME, UUID, LAST_UPDATED) VALUES
+    (1, 'bch', '3c13f873-1ff1-42f7-8382-75ac82c49ffc', '2024-01-01'),
+    (2, 'foo', '498226bf-e18e-4f0f-81f5-dd242914df95', '1800-01-01'),
+    (3, 'bar', '498226bf-e18e-4f0f-81f5-dd242914df96', '2000-01-01');
+
+INSERT INTO public.concept_node__remote_dictionary (CONCEPT_NODE_ID, REMOTE_DICTIONARY_ID) VALUES
+    (261, 1),
+    (264, 1),
+    (266, 1),
+    (267, 1),
+    (268, 1),
+    (269, 1),
+    (270, 1),
+    (267, 2),
+    (268, 2),
+    (269, 2),
+    (209, 3), (180, 3), (191, 3), (197, 3), (202, 3), (215, 3), (219, 3), (226, 3), (236, 3), (243, 3),
+    (247, 3), (250, 3), (259, 3), (262, 3), (265, 3), (181, 3), (182, 3), (183, 3), (184, 3), (223, 3),
+    (263, 3), (185, 3), (186, 3), (187, 3), (188, 3), (189, 3), (231, 3), (232, 3), (190, 3), (192, 3),
+    (193, 3), (194, 3), (195, 3), (196, 3), (198, 3), (199, 3), (200, 3), (201, 3), (203, 3), (204, 3),
+    (241, 3), (205, 3), (206, 3), (207, 3), (208, 3), (210, 3), (211, 3), (212, 3), (213, 3), (214, 3),
+    (216, 3), (217, 3), (218, 3), (220, 3), (221, 3), (222, 3), (224, 3), (225, 3), (227, 3), (228, 3),
+    (229, 3), (230, 3), (233, 3), (234, 3), (235, 3), (237, 3), (238, 3), (239, 3), (240, 3), (242, 3),
+    (244, 3), (245, 3), (246, 3), (248, 3), (249, 3), (251, 3), (252, 3), (253, 3), (254, 3), (255, 3),
+    (256, 3), (257, 3), (258, 3), (261, 3), (264, 3), (266, 3), (267, 3), (268, 3), (269, 3);
 
 --
 -- PostgreSQL database dump complete

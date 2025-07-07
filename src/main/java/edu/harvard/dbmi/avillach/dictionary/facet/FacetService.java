@@ -2,6 +2,7 @@ package edu.harvard.dbmi.avillach.dictionary.facet;
 
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,12 +18,12 @@ public class FacetService {
         this.repository = repository;
     }
 
+    @Cacheable("facets")
     public List<FacetCategory> getFacets(Filter filter) {
         return repository.getFacets(filter);
     }
 
     public Optional<Facet> facetDetails(String facetCategory, String facet) {
-        return repository.getFacet(facetCategory, facet)
-            .map(f -> new Facet(f, repository.getFacetMeta(facetCategory, facet)));
+        return repository.getFacet(facetCategory, facet).map(f -> new Facet(f, repository.getFacetMeta(facetCategory, facet)));
     }
 }
