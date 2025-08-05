@@ -23,14 +23,14 @@ public class ConceptFilterQueryGenerator {
         , allow_filtering AS (
             SELECT
                 concept_node.concept_node_id AS concept_node_id,
-                (string_agg(concept_node_meta.value, ' ') NOT LIKE '%' || 'true' || '%')::int AS rank_adjustment
+                (COALESCE(concept_node_meta.value, ' ') NOT LIKE '%' || 'true' || '%')::int AS rank_adjustment
             FROM
                 concept_node
-                JOIN concept_node_meta ON
+                LEFT JOIN concept_node_meta ON
                     concept_node.concept_node_id = concept_node_meta.concept_node_id
                     AND concept_node_meta.KEY IN (:disallowed_meta_keys)
             GROUP BY
-                concept_node.concept_node_id
+                concept_node.concept_node_id, concept_node_meta.value
         )
         """;
 
