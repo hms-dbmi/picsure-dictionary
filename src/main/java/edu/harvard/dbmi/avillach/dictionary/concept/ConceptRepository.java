@@ -149,9 +149,9 @@ public class ConceptRepository {
         // if this is for the absolute root of this dataset's ontology, conceptPath
         // will be empty, and we should just find the parentless concept instead.
         String rootConceptMatch =
-            StringUtils.hasLength(conceptPath) ? "concept_node.CONCEPT_PATH = :path" : "concept_node.PARENT_ID IS NULL";
+                StringUtils.hasLength(conceptPath) ? "concept_node.CONCEPT_PATH = :path" : "concept_node.PARENT_ID IS NULL";
         String sql = QueryUtility.ALLOW_FILTERING_Q
-            + """
+                + """
                     , core_query AS (
                         WITH RECURSIVE nodes AS (
                             SELECT
@@ -226,7 +226,7 @@ public class ConceptRepository {
                 """
                 .formatted(rootConceptMatch, rootConceptMatch, rootConceptMatch);
         MapSqlParameterSource params = new MapSqlParameterSource().addValue("path", conceptPath).addValue("dataset", dataset)
-            .addValue("depth", depth).addValue("disallowed_meta_keys", disallowedMetaFields);
+                .addValue("depth", depth).addValue("disallowed_meta_keys", disallowedMetaFields);
 
         if (depth < 0) {
             return Optional.empty();
@@ -234,6 +234,40 @@ public class ConceptRepository {
 
         return Optional.ofNullable(template.query(sql, params, conceptResultSetExtractor));
 
+    }
+
+    public List<Concept> getConceptHierarchy(String dataset, String conceptPath) {
+        String sql = """
+                WITH RECURSIVE nodes AS (
+                    SELECT c.concept_node_id, c.parent_id
+                    FROM concept_node c
+                    LEFT JOIN dataset ON c.dataset_id = dataset.dataset_id
+                    WHERE c.concept_path = :path AND dataset.REF = :dataset
+                    UNION ALL
+                    SELECT c.concept_node_id, c.parent_id
+                    FROM concept_node c
+                    INNER JOIN nodes n ON n.parent_id = c.concept_node_id
+                )
+                SELECT
+                    concept_node.*,
+                    ds.REF as dataset,
+                    ds.abbreviation AS studyAcronym,
+                    continuous_min.VALUE as min, continuous_max.VALUE as max,
+                    categorical_values.VALUE as values,
+                    FALSE AS allowFiltering,
+                    meta_description.VALUE AS description
+                FROM
+                    concept_node
+                    INNER JOIN nodes n on n.concept_node_id = concept_node.concept_node_id
+                    LEFT JOIN dataset AS ds ON concept_node.dataset_id = ds.dataset_id
+                    LEFT JOIN concept_node_meta AS meta_description ON concept_node.concept_node_id = meta_description.concept_node_id AND meta_description.KEY = 'description'
+                    LEFT JOIN concept_node_meta AS continuous_min ON concept_node.concept_node_id = continuous_min.concept_node_id AND continuous_min.KEY = 'min'
+                    LEFT JOIN concept_node_meta AS continuous_max ON concept_node.concept_node_id = continuous_max.concept_node_id AND continuous_max.KEY = 'max'
+                    LEFT JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values'
+                """;
+        MapSqlParameterSource params = new MapSqlParameterSource().addValue("path", conceptPath).addValue("dataset", dataset);
+
+        return template.query(sql, params, mapper);
     }
 
 
