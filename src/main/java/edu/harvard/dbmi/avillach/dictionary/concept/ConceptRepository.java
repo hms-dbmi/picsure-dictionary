@@ -149,9 +149,9 @@ public class ConceptRepository {
         // if this is for the absolute root of this dataset's ontology, conceptPath
         // will be empty, and we should just find the parentless concept instead.
         String rootConceptMatch =
-                StringUtils.hasLength(conceptPath) ? "concept_node.CONCEPT_PATH = :path" : "concept_node.PARENT_ID IS NULL";
+            StringUtils.hasLength(conceptPath) ? "concept_node.CONCEPT_PATH = :path" : "concept_node.PARENT_ID IS NULL";
         String sql = QueryUtility.ALLOW_FILTERING_Q
-                + """
+            + """
                     , core_query AS (
                         WITH RECURSIVE nodes AS (
                             SELECT
@@ -226,7 +226,7 @@ public class ConceptRepository {
                 """
                 .formatted(rootConceptMatch, rootConceptMatch, rootConceptMatch);
         MapSqlParameterSource params = new MapSqlParameterSource().addValue("path", conceptPath).addValue("dataset", dataset)
-                .addValue("depth", depth).addValue("disallowed_meta_keys", disallowedMetaFields);
+            .addValue("depth", depth).addValue("disallowed_meta_keys", disallowedMetaFields);
 
         if (depth < 0) {
             return Optional.empty();
@@ -237,7 +237,8 @@ public class ConceptRepository {
     }
 
     public List<Concept> getConceptHierarchy(String dataset, String conceptPath) {
-        String sql = """
+        String sql =
+            """
                 WITH RECURSIVE nodes AS (
                     SELECT c.concept_node_id, c.parent_id
                     FROM concept_node c
@@ -266,7 +267,6 @@ public class ConceptRepository {
                     LEFT JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values'
                 """;
         MapSqlParameterSource params = new MapSqlParameterSource().addValue("path", conceptPath).addValue("dataset", dataset);
-
         return template.query(sql, params, mapper);
     }
 

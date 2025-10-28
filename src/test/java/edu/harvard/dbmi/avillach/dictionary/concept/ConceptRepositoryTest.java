@@ -380,7 +380,10 @@ class ConceptRepositoryTest {
         List<Concept> conceptHierarchy = subject.getConceptHierarchy("phs000284", "\\phs000284\\pht001902\\phv00122507\\age\\");
         assertEquals(4, conceptHierarchy.size());
         Set<String> conceptsInHierarchy = conceptHierarchy.stream().map(Concept::conceptPath).collect(Collectors.toSet());
-        Set<String> expectedConceptsInHierarchy = Set.of("\\phs000284\\pht001902\\phv00122507\\age\\", "\\phs000284\\pht001902\\phv00122507\\", "\\phs000284\\pht001902\\", "\\phs000284\\");
+        Set<String> expectedConceptsInHierarchy = Set.of(
+            "\\phs000284\\pht001902\\phv00122507\\age\\", "\\phs000284\\pht001902\\phv00122507\\", "\\phs000284\\pht001902\\",
+            "\\phs000284\\"
+        );
         assertEquals(conceptsInHierarchy, expectedConceptsInHierarchy);
     }
 
@@ -395,6 +398,7 @@ class ConceptRepositoryTest {
         List<Concept> conceptHierarchy = subject.getConceptHierarchy("phs000999", "\\phs000284\\pht001902\\phv00122507\\age\\");
         assertEquals(0, conceptHierarchy.size());
     }
+
 
     private static void compareWithChildren(List<Concept> actualConcepts, List<Concept> expectedConcepts) {
         while (!expectedConcepts.isEmpty()) {

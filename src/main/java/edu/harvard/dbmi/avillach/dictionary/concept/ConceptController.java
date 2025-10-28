@@ -65,8 +65,8 @@ public class ConceptController {
 
     @PostMapping(path = "/concepts/tree/{dataset}")
     public ResponseEntity<Concept> conceptTree(
-            @PathVariable(name = "dataset") String dataset, @RequestBody() String conceptPath,
-            @RequestParam(name = "depth", required = false, defaultValue = "2") Integer depth
+        @PathVariable(name = "dataset") String dataset, @RequestBody() String conceptPath,
+        @RequestParam(name = "depth", required = false, defaultValue = "2") Integer depth
     ) {
         if (depth < 0 || depth > MAX_DEPTH) {
             return ResponseEntity.badRequest().build();
@@ -76,7 +76,7 @@ public class ConceptController {
 
     @PostMapping(path = "/concepts/hierarchy/{dataset}")
     public ResponseEntity<List<Concept>> conceptHierarchy(
-            @PathVariable(name = "dataset") String dataset, @RequestBody() String conceptPath
+        @PathVariable(name = "dataset") String dataset, @RequestBody() String conceptPath
     ) {
         return ResponseEntity.ok(conceptService.conceptHierarchy(dataset, conceptPath));
     }
