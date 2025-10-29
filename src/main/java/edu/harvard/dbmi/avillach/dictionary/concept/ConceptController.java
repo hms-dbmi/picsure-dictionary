@@ -78,7 +78,11 @@ public class ConceptController {
     public ResponseEntity<List<Concept>> conceptHierarchy(
         @PathVariable(name = "dataset") String dataset, @RequestBody() String conceptPath
     ) {
-        return ResponseEntity.ok(conceptService.conceptHierarchy(dataset, conceptPath));
+        List<Concept> body = conceptService.conceptHierarchy(dataset, conceptPath);
+        if (body.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(body);
     }
 
     @GetMapping(path = "/concepts/tree")
