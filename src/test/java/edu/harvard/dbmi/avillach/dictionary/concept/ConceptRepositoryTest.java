@@ -17,10 +17,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.MountableFile;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -403,8 +400,8 @@ class ConceptRepositoryTest {
     private static void compareWithChildren(List<Concept> actualConcepts, List<Concept> expectedConcepts) {
         while (!expectedConcepts.isEmpty()) {
             assertEquals(expectedConcepts, actualConcepts);
-            actualConcepts = actualConcepts.stream().map(Concept::children).flatMap(List::stream).toList();
-            expectedConcepts = expectedConcepts.stream().map(Concept::children).flatMap(List::stream).toList();
+            actualConcepts = actualConcepts.stream().map(Concept::children).filter(Objects::nonNull).flatMap(List::stream).toList();
+            expectedConcepts = expectedConcepts.stream().map(Concept::children).filter(Objects::nonNull).flatMap(List::stream).toList();
         }
     }
 
