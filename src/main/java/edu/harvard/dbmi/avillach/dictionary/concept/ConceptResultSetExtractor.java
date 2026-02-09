@@ -2,8 +2,6 @@ package edu.harvard.dbmi.avillach.dictionary.concept;
 
 import edu.harvard.dbmi.avillach.dictionary.concept.model.Concept;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.ConceptType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.ResultSetExtractor;
@@ -15,7 +13,6 @@ import java.util.*;
 
 @Component
 public class ConceptResultSetExtractor implements ResultSetExtractor<Concept> {
-    private static final Logger log = LoggerFactory.getLogger(ConceptResultSetExtractor.class);
     @Autowired
     private ConceptResultSetUtil conceptResultSetUtil;
 

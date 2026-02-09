@@ -146,6 +146,8 @@ public class ConceptRepository {
     }
 
     public Optional<Concept> getConceptTree(String dataset, String conceptPath, int depth) {
+        // if this is for the absolute root of this dataset's ontology, conceptPath
+        // will be empty, and we should just find the parentless concept instead.
         String rootConceptMatch =
             StringUtils.hasLength(conceptPath) ? "concept_node.CONCEPT_PATH = :path" : "concept_node.PARENT_ID IS NULL";
         String sql = QueryUtility.ALLOW_FILTERING_Q
@@ -230,7 +232,6 @@ public class ConceptRepository {
                     ORDER BY LENGTH(concept_node.concept_path)
                 """
                 .formatted(rootConceptMatch, rootConceptMatch, rootConceptMatch);
-
         MapSqlParameterSource params = new MapSqlParameterSource().addValue("path", conceptPath).addValue("dataset", dataset)
             .addValue("depth", depth).addValue("disallowed_meta_keys", disallowedMetaFields);
 
