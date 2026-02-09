@@ -7,7 +7,9 @@ import edu.harvard.dbmi.avillach.dictionary.concept.model.ContinuousConcept;
 import edu.harvard.dbmi.avillach.dictionary.dataset.Dataset;
 import edu.harvard.dbmi.avillach.dictionary.dataset.DatasetService;
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
+import edu.harvard.dbmi.avillach.dictionary.search.MeilisearchSearchService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,23 +24,37 @@ public class ConceptService {
     private final ConceptRepository conceptRepository;
     private final DatasetService datasetService;
     private final ConceptDecoratorService conceptDecoratorService;
+    private final MeilisearchSearchService meilisearchSearchService;
+    private final boolean useMeilisearch;
 
     @Autowired
     public ConceptService(
-        ConceptRepository conceptRepository, DatasetService datasetService, ConceptDecoratorService conceptDecoratorService
+        ConceptRepository conceptRepository, DatasetService datasetService, ConceptDecoratorService conceptDecoratorService,
+        @Value("${search.backend:postgres}") String searchBackend,
+        @Autowired(required = false) MeilisearchSearchService meilisearchSearchService
     ) {
         this.conceptRepository = conceptRepository;
         this.datasetService = datasetService;
         this.conceptDecoratorService = conceptDecoratorService;
+        this.meilisearchSearchService = meilisearchSearchService;
+        this.useMeilisearch = "meilisearch".equalsIgnoreCase(searchBackend);
     }
 
     @Cacheable("concepts")
     public List<Concept> listConcepts(Filter filter, Pageable page) {
+        if (useMeilisearch && meilisearchSearchService != null) {
+            return meilisearchSearchService.searchConcepts(filter, page);
+        }
         return conceptRepository.getConcepts(filter, page);
     }
 
     public List<Concept> listDetailedConcepts(Filter filter, Pageable page) {
-        List<Concept> concepts = conceptRepository.getConcepts(filter, page);
+        List<Concept> concepts;
+        if (useMeilisearch && meilisearchSearchService != null) {
+            concepts = meilisearchSearchService.searchConcepts(filter, page);
+        } else {
+            concepts = conceptRepository.getConcepts(filter, page);
+        }
         Map<Concept, Map<String, String>> metas = conceptRepository.getConceptMetaForConcepts(concepts);
         return concepts.stream().map(concept -> (Concept) switch (concept) {
             case ContinuousConcept cont -> new ContinuousConcept(cont, metas.getOrDefault(cont, Map.of()));
@@ -49,6 +65,9 @@ public class ConceptService {
 
     @Cacheable("concepts_count")
     public long countConcepts(Filter filter) {
+        if (useMeilisearch && meilisearchSearchService != null) {
+            return meilisearchSearchService.countConcepts(filter);
+        }
         return conceptRepository.countConcepts(filter);
     }
 

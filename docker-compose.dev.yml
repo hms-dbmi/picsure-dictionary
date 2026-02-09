@@ -12,6 +12,17 @@ services:
     env_file: .env
     networks:
       - dictionary
+  meilisearch:
+    container_name: meilisearch
+    image: getmeili/meilisearch:v1.12
+    ports:
+      - "7700:7700"
+    environment:
+      - MEILI_ENV=development
+    volumes:
+      - meili-data:/meili_data
+    networks:
+      - dictionary
   dictionary-api:
     container_name: dictionary-api
     image: avillach/dictionary-api:latest
@@ -25,6 +36,7 @@ services:
 
 volumes:
   picsure-search:
+  meili-data:
 
 networks:
   dictionary:

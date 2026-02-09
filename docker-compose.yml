@@ -11,6 +11,17 @@ services:
     restart: always
     networks:
       - dictionary
+  meilisearch:
+    container_name: meilisearch
+    image: getmeili/meilisearch:v1.12
+    environment:
+      - MEILI_MASTER_KEY=${MEILISEARCH_MASTER_KEY}
+      - MEILI_ENV=production
+    volumes:
+      - meili-data:/meili_data
+    restart: always
+    networks:
+      - dictionary
   dictionary-api:
     container_name: dictionary-api
     image: avillach/dictionary-api:latest
@@ -38,6 +49,7 @@ services:
 
 volumes:
   picsure-search:
+  meili-data:
 
 networks:
   dictionary:
