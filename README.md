@@ -1,4 +1,4 @@
-# Dictionary Project
+ # Dictionary Project
 
 ## Purpose
 

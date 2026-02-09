@@ -2,6 +2,7 @@ package edu.harvard.dbmi.avillach.dictionary.search;
 
 import com.meilisearch.sdk.Client;
 import com.meilisearch.sdk.Index;
+import com.meilisearch.sdk.exceptions.MeilisearchApiException;
 import com.meilisearch.sdk.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +14,8 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 
 @Service
@@ -21,12 +24,20 @@ public class MeilisearchIndexService {
 
     private static final Logger LOG = LoggerFactory.getLogger(MeilisearchIndexService.class);
 
-    private static final int BATCH_SIZE = 5000;
+    private static final int BATCH_SIZE = 1000;
+    private static final int MAX_PAYLOAD_CHARS = 50_000_000; // approximate cap to stay under Meilisearch's ~95 MiB limit
+    private static final int MAX_SUBMISSION_RETRIES = 5;
+    private static final long RETRY_BACKOFF_BASE_MS = 1000L;
+    private static final long RETRY_BACKOFF_MAX_MS = 30_000L;
+    private static final String DEFAULT_TOO_LARGE_FILE = "to_large_data.json";
+    private static final String DEFAULT_DEBUG_FILE = "debug.json";
 
     private final Client client;
     private final NamedParameterJdbcTemplate template;
     private final String indexName;
     private final List<String> disallowedMetaFields;
+    private final String tooLargeFile;
+    private final String debugFile;
 
     // @formatter:off
 	private static final String CONCEPT_QUERY = """
@@ -58,7 +69,9 @@ public class MeilisearchIndexService {
 			LEFT JOIN concept_node_meta meta_max ON cn.concept_node_id = meta_max.concept_node_id AND meta_max.key = 'max'
 		WHERE
 			meta_values.value IS NOT NULL AND meta_values.value <> ''
+			AND cn.concept_node_id > :lastId
 		ORDER BY cn.concept_node_id
+		LIMIT :pageSize
 		""";
 
 	private static final String META_VALUES_QUERY = """
@@ -69,6 +82,7 @@ public class MeilisearchIndexService {
 			concept_node_meta cnm
 		WHERE
 			cnm.key NOT IN ('values', 'min', 'max', 'description')
+			AND cnm.concept_node_id IN (:concept_node_ids)
 		GROUP BY cnm.concept_node_id
 		""";
 
@@ -78,7 +92,9 @@ public class MeilisearchIndexService {
 		FROM
 			concept_node_meta cnm
 		WHERE
-			cnm.key IN (:disallowed_meta_keys) AND LOWER(cnm.value) = 'true'
+			cnm.key IN (:disallowed_meta_keys)
+			AND LOWER(cnm.value) = 'true'
+			AND cnm.concept_node_id IN (:concept_node_ids)
 		""";
 
 	private static final String CONSENT_QUERY = """
@@ -111,18 +127,31 @@ public class MeilisearchIndexService {
 			facet__concept_node fcn
 			JOIN facet f ON fcn.facet_id = f.facet_id
 			JOIN facet_category fc ON f.facet_category_id = fc.facet_category_id
+		WHERE
+			fcn.concept_node_id IN (:concept_node_ids)
 		ORDER BY fcn.concept_node_id
+		""";
+
+	private static final String FACET_CATEGORY_KEYS_QUERY = """
+		SELECT DISTINCT
+			fc.name AS category_name
+		FROM
+			facet_category fc
 		""";
 	// @formatter:on
 
     public MeilisearchIndexService(
         Client client, NamedParameterJdbcTemplate template, @Value("${meilisearch.index-name}") String indexName,
-        @Value("${filtering.unfilterable_concepts}") List<String> disallowedMetaFields
+        @Value("${filtering.unfilterable_concepts}") List<String> disallowedMetaFields,
+        @Value("${meilisearch.indexing.too-large-file:" + DEFAULT_TOO_LARGE_FILE + "}") String tooLargeFile,
+        @Value("${meilisearch.indexing.debug-file:" + DEFAULT_DEBUG_FILE + "}") String debugFile
     ) {
         this.client = client;
         this.template = template;
         this.indexName = indexName;
         this.disallowedMetaFields = disallowedMetaFields;
+        this.tooLargeFile = tooLargeFile;
+        this.debugFile = debugFile;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -131,54 +160,83 @@ public class MeilisearchIndexService {
             LOG.info("Starting Meilisearch index build for index '{}'", indexName);
             long start = System.currentTimeMillis();
 
-            // 1. Create/update index
-            TaskInfo createTask = client.createIndex(indexName, "id");
-            client.waitForTask(createTask.getTaskUid());
-
+            // 1. Create/update index (enqueued; Meilisearch processes tasks in order)
+            client.createIndex(indexName, "id");
             Index index = client.index(indexName);
 
             // 2. Configure index settings
             configureIndex(index);
 
             // 3. Load supporting data
-            Map<Integer, String> metaValuesMap = loadMetaValues();
-            Set<Integer> stigmatizedIds = loadStigmatizedIds();
             Map<Integer, List<String>> consentsByDatasetId = loadConsents();
-            Map<Integer, Map<String, List<String>>> facetsByConceptId = loadFacets();
-            Set<String> allFacetCategoryKeys = collectFacetCategoryKeys(facetsByConceptId);
+            Set<String> allFacetCategoryKeys = loadFacetCategoryKeys();
 
             // Update filterable attributes to include dynamic facet categories
             updateFilterableAttributes(index, allFacetCategoryKeys);
 
-            // 4. Stream concepts and build documents
+            // 4. Page through concepts and build documents
             List<Map<String, Object>> batch = new ArrayList<>(BATCH_SIZE);
-            int totalDocs = 0;
+            int totalDocsAttempted = 0;
+            int failedBatches = 0;
+            int lastId = 0;
+            int batchCount = 0;
+            int lastTaskUid = -1;
 
-            List<Map<String, Object>> rows = template.queryForList(CONCEPT_QUERY, new MapSqlParameterSource());
+            while (true) {
+                MapSqlParameterSource pageParams = new MapSqlParameterSource();
+                pageParams.addValue("lastId", lastId);
+                pageParams.addValue("pageSize", BATCH_SIZE);
 
-            for (Map<String, Object> row : rows) {
-                MeilisearchConceptDocument doc = buildDocument(row, metaValuesMap, stigmatizedIds, consentsByDatasetId, facetsByConceptId);
-                batch.add(doc.toMap());
+                List<Map<String, Object>> rows = template.queryForList(CONCEPT_QUERY, pageParams);
+                if (rows.isEmpty()) break;
 
-                if (batch.size() >= BATCH_SIZE) {
-                    indexBatch(index, batch);
-                    totalDocs += batch.size();
-                    batch.clear();
-                    LOG.info("Indexed {} documents so far...", totalDocs);
+                List<Integer> conceptIds = new ArrayList<>(rows.size());
+                for (Map<String, Object> row : rows) {
+                    conceptIds.add((Integer) row.get("concept_node_id"));
                 }
-            }
 
-            // Index remaining
-            if (!batch.isEmpty()) {
-                indexBatch(index, batch);
-                totalDocs += batch.size();
+                Map<Integer, String> metaValuesMap = loadMetaValues(conceptIds);
+                Set<Integer> stigmatizedIds = loadStigmatizedIds(conceptIds);
+                Map<Integer, Map<String, List<String>>> facetsByConceptId = loadFacets(conceptIds);
+
+                for (Map<String, Object> row : rows) {
+                    MeilisearchConceptDocument doc =
+                        buildDocument(row, metaValuesMap, stigmatizedIds, consentsByDatasetId, facetsByConceptId);
+                    batch.add(doc.toMap());
+                }
+
+                lastId = (Integer) rows.get(rows.size() - 1).get("concept_node_id");
+
+                int taskUid = indexBatch(index, batch);
+                if (taskUid >= 0) {
+                    lastTaskUid = taskUid;
+                } else {
+                    failedBatches++;
+                }
+                totalDocsAttempted += batch.size();
+                batch.clear();
+                batchCount++;
+                LOG.info("Attempted to submit {} documents so far...", totalDocsAttempted);
+
+                // Every 5 batches, wait for the queue to drain
+                if (batchCount % 5 == 0 && lastTaskUid >= 0) {
+                    LOG.info("Waiting for Meilisearch to process queued tasks...");
+                    awaitTask(lastTaskUid);
+                }
+
+                if (rows.size() < BATCH_SIZE) break;
             }
 
             long elapsed = System.currentTimeMillis() - start;
-            LOG.info("Meilisearch index build complete: {} documents indexed in {} ms", totalDocs, elapsed);
+            if (failedBatches > 0) {
+                LOG.warn(
+                    "Meilisearch indexing skipped {} batches due to errors. See {} and {} for details.", failedBatches, tooLargeFile,
+                    debugFile
+                );
+            }
+            LOG.info("Meilisearch index build complete: {} documents attempted in {} ms", totalDocsAttempted, elapsed);
         } catch (Exception e) {
-            LOG.error("Failed to build Meilisearch index", e);
-            throw new RuntimeException("Meilisearch index build failed", e);
+            LOG.error("Failed to build Meilisearch index. Continuing without a fresh index build.", e);
         }
     }
 
@@ -210,8 +268,7 @@ public class MeilisearchIndexService {
         typoTolerance.setMinWordSizeForTypos(minWordSizeForTypos);
         settings.setTypoTolerance(typoTolerance);
 
-        TaskInfo updateTask = index.updateSettings(settings);
-        client.waitForTask(updateTask.getTaskUid());
+        index.updateSettings(settings);
     }
 
     private void updateFilterableAttributes(Index index, Set<String> facetCategoryKeys) throws Exception {
@@ -221,13 +278,16 @@ public class MeilisearchIndexService {
         Settings settings = new Settings();
         settings.setFilterableAttributes(filterable.toArray(new String[0]));
 
-        TaskInfo updateTask = index.updateSettings(settings);
-        client.waitForTask(updateTask.getTaskUid());
+        index.updateSettings(settings);
     }
 
-    private Map<Integer, String> loadMetaValues() {
+    private Map<Integer, String> loadMetaValues(List<Integer> conceptIds) {
+        if (conceptIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
         Map<Integer, String> map = new HashMap<>();
-        template.queryForList(META_VALUES_QUERY, new MapSqlParameterSource()).forEach(row -> {
+        MapSqlParameterSource params = new MapSqlParameterSource("concept_node_ids", conceptIds);
+        template.queryForList(META_VALUES_QUERY, params).forEach(row -> {
             Integer conceptNodeId = (Integer) row.get("concept_node_id");
             String allMeta = (String) row.get("all_meta_values");
             map.put(conceptNodeId, allMeta);
@@ -235,9 +295,14 @@ public class MeilisearchIndexService {
         return map;
     }
 
-    private Set<Integer> loadStigmatizedIds() {
+    private Set<Integer> loadStigmatizedIds(List<Integer> conceptIds) {
+        if (conceptIds.isEmpty() || disallowedMetaFields == null || disallowedMetaFields.isEmpty()) {
+            return Collections.emptySet();
+        }
         Set<Integer> ids = new HashSet<>();
-        MapSqlParameterSource params = new MapSqlParameterSource("disallowed_meta_keys", disallowedMetaFields);
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("disallowed_meta_keys", disallowedMetaFields);
+        params.addValue("concept_node_ids", conceptIds);
         template.queryForList(STIGMATIZED_QUERY, params).forEach(row -> {
             ids.add((Integer) row.get("concept_node_id"));
         });
@@ -267,9 +332,13 @@ public class MeilisearchIndexService {
         return consentsByDatasetId;
     }
 
-    private Map<Integer, Map<String, List<String>>> loadFacets() {
+    private Map<Integer, Map<String, List<String>>> loadFacets(List<Integer> conceptIds) {
+        if (conceptIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
         Map<Integer, Map<String, List<String>>> facetsByConceptId = new HashMap<>();
-        template.queryForList(FACET_QUERY, new MapSqlParameterSource()).forEach(row -> {
+        MapSqlParameterSource params = new MapSqlParameterSource("concept_node_ids", conceptIds);
+        template.queryForList(FACET_QUERY, params).forEach(row -> {
             Integer conceptNodeId = (Integer) row.get("concept_node_id");
             String categoryName = (String) row.get("category_name");
             String facetName = (String) row.get("facet_name");
@@ -280,9 +349,14 @@ public class MeilisearchIndexService {
         return facetsByConceptId;
     }
 
-    private Set<String> collectFacetCategoryKeys(Map<Integer, Map<String, List<String>>> facetsByConceptId) {
+    private Set<String> loadFacetCategoryKeys() {
         Set<String> keys = new HashSet<>();
-        facetsByConceptId.values().forEach(m -> keys.addAll(m.keySet()));
+        template.queryForList(FACET_CATEGORY_KEYS_QUERY, new MapSqlParameterSource()).forEach(row -> {
+            String categoryName = (String) row.get("category_name");
+            if (categoryName != null && !categoryName.isBlank()) {
+                keys.add("facet_" + categoryName);
+            }
+        });
         return keys;
     }
 
@@ -334,9 +408,142 @@ public class MeilisearchIndexService {
         return doc;
     }
 
-    private void indexBatch(Index index, List<Map<String, Object>> batch) throws Exception {
-        String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(batch);
-        TaskInfo task = index.addDocuments(json, "id");
-        client.waitForTask(task.getTaskUid());
+    private static final com.fasterxml.jackson.databind.ObjectMapper MAPPER = new com.fasterxml.jackson.databind.ObjectMapper();
+
+    /**
+     * Index a batch. On payload_too_large (413), splits in half and retries once. If it still fails due to size, writes to the configured
+     * too-large file and continues. On other failures, retries with backoff then writes to the configured debug file and continues.
+     */
+    private int indexBatch(Index index, List<Map<String, Object>> batch) {
+        return indexBatch(index, batch, false);
+    }
+
+    private int indexBatch(Index index, List<Map<String, Object>> batch, boolean splitAttempted) {
+        if (batch.isEmpty()) {
+            return -1;
+        }
+
+        int attempts = 0;
+        while (true) {
+            try {
+                String json = MAPPER.writeValueAsString(batch);
+                if (!splitAttempted && batch.size() > 1 && json.length() > MAX_PAYLOAD_CHARS) {
+                    LOG.warn(
+                        "Estimated payload length {} chars exceeds {}. Splitting {} documents in half and retrying.", json.length(),
+                        MAX_PAYLOAD_CHARS, batch.size()
+                    );
+                    return splitAndIndex(index, batch);
+                }
+                TaskInfo task = index.addDocuments(json, "id");
+                return task.getTaskUid();
+            } catch (Exception e) {
+                if (isPayloadTooLarge(e)) {
+                    return handlePayloadTooLarge(index, batch, splitAttempted, e);
+                }
+
+                attempts++;
+                if (attempts > MAX_SUBMISSION_RETRIES) {
+                    LOG.error(
+                        "Failed to submit batch of {} documents after {} retries. Writing to {} and continuing.", batch.size(),
+                        MAX_SUBMISSION_RETRIES, debugFile, e
+                    );
+                    writeDebugFile(batch);
+                    return -1;
+                }
+
+                long backoffMs = Math.min(RETRY_BACKOFF_MAX_MS, RETRY_BACKOFF_BASE_MS * (1L << (attempts - 1)));
+                LOG.warn(
+                    "Failed to submit batch of {} documents (attempt {}/{}). Retrying in {} ms: {}", batch.size(), attempts,
+                    MAX_SUBMISSION_RETRIES, backoffMs, e.getMessage()
+                );
+                if (!sleep(backoffMs)) {
+                    LOG.warn("Batch retry interrupted. Skipping batch of {} documents.", batch.size());
+                    return -1;
+                }
+            }
+        }
+    }
+
+    private int handlePayloadTooLarge(Index index, List<Map<String, Object>> batch, boolean splitAttempted, Exception e) {
+        if (!splitAttempted && batch.size() > 1) {
+            return splitAndIndex(index, batch);
+        }
+        LOG.error("Payload too large for {} documents after split. Writing to {} and continuing.", batch.size(), tooLargeFile, e);
+        writeTooLargeFile(batch);
+        return -1;
+    }
+
+    private int splitAndIndex(Index index, List<Map<String, Object>> batch) {
+        int mid = batch.size() / 2;
+        LOG.warn("Reducing payload by splitting {} documents into {} and {}.", batch.size(), mid, batch.size() - mid);
+        int leftTaskUid = indexBatch(index, new ArrayList<>(batch.subList(0, mid)), true);
+        int rightTaskUid = indexBatch(index, new ArrayList<>(batch.subList(mid, batch.size())), true);
+        return rightTaskUid >= 0 ? rightTaskUid : leftTaskUid;
+    }
+
+    private boolean isPayloadTooLarge(Exception e) {
+        Throwable current = e;
+        while (current != null) {
+            if (current instanceof MeilisearchApiException) {
+                MeilisearchApiException apiException = (MeilisearchApiException) current;
+                String code = apiException.getCode();
+                if (code != null && code.contains("payload_too_large")) {
+                    return true;
+                }
+            }
+            String message = current.getMessage();
+            if (message != null && (message.contains("413") || message.contains("payload_too_large") || message.contains("size limit"))) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private boolean sleep(long backoffMs) {
+        try {
+            Thread.sleep(backoffMs);
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
+    private synchronized void writeDebugFile(List<Map<String, Object>> batch) {
+        writeBatchToFile(batch, debugFile);
+    }
+
+    private synchronized void writeTooLargeFile(List<Map<String, Object>> batch) {
+        writeBatchToFile(batch, tooLargeFile);
+    }
+
+    private void writeBatchToFile(List<Map<String, Object>> batch, String fileName) {
+        try (FileWriter fw = new FileWriter(fileName, true)) {
+            fw.write(MAPPER.writeValueAsString(batch));
+            fw.write(System.lineSeparator());
+        } catch (IOException ex) {
+            LOG.error("Failed to write batch to {}: {}", fileName, ex.getMessage());
+        }
+    }
+
+    /**
+     * Poll Meilisearch until the given task is processed, with a generous timeout. This lets the task queue drain before we submit more
+     * batches.
+     */
+    private void awaitTask(int taskUid) throws InterruptedException {
+        for (int i = 0; i < 300; i++) {
+            try {
+                Thread.sleep(1000);
+                Task task = client.getTask(taskUid);
+                TaskStatus status = task.getStatus();
+                if (status == TaskStatus.SUCCEEDED || status == TaskStatus.FAILED || status == TaskStatus.CANCELED) {
+                    return;
+                }
+            } catch (Exception e) {
+                LOG.debug("Waiting for task {} (attempt {}): {}", taskUid, i, e.getMessage());
+            }
+        }
+        LOG.warn("Timed out waiting for Meilisearch task {} after 300s", taskUid);
     }
 }

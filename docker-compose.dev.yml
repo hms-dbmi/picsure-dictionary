@@ -8,8 +8,16 @@ services:
     image: postgres:16-alpine
     volumes:
       - picsure-search:/var/lib/postgresql/data
-      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+      - ./dictionary_db.sql:/dump:ro
+      - ./db/restore-dump.sh:/docker-entrypoint-initdb.d/restore-dump.sh:ro
     env_file: .env
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
     networks:
       - dictionary
   meilisearch:
@@ -19,6 +27,7 @@ services:
       - "7700:7700"
     environment:
       - MEILI_ENV=development
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-masterKey}
     volumes:
       - meili-data:/meili_data
     networks:
@@ -28,9 +37,21 @@ services:
     image: avillach/dictionary-api:latest
     build: .
     depends_on:
-      - dictionary-db
+      dictionary-db:
+        condition: service_healthy
     restart: always
     env_file: .env
+    environment:
+      - SEARCH_BACKEND=${SEARCH_BACKEND:-postgres}
+      - MEILISEARCH_URL=${MEILISEARCH_URL:-http://meilisearch:7700}
+      - MEILISEARCH_API_KEY=${MEILI_MASTER_KEY:-masterKey}
+      - MEILISEARCH_INDEXING_TOO_LARGE_FILE=/var/log/dictionary/to_large_data.json
+      - MEILISEARCH_INDEXING_DEBUG_FILE=/var/log/dictionary/debug.json
+      - CACHE_DURATION_MINUTES=${CACHE_DURATION_MINUTES:-60}
+    ports:
+      - "8080:80"
+    volumes:
+      - ./meilisearch-output:/var/log/dictionary
     networks:
       - dictionary
 

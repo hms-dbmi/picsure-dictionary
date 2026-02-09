@@ -2,7 +2,7 @@
 #  -H 'origin: https://dev.picsure.biodatacatalyst.nhlbi.nih.gov'
 #  -H 'referer: https://dev.picsure.biodatacatalyst.nhlbi.nih.gov/'
 #  --data-raw '{"facets":[],"search":"","consents":[]}'
-POST http://localhost:80/concepts?page_number=0&page_size=100
+POST http://localhost:8080/api/concepts?page_number=0&page_size=100
 Content-Type: application/json
 
 {"facets":[],"search":"lipid triglyceride"}
