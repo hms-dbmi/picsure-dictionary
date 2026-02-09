@@ -203,11 +203,11 @@ public class MeilisearchIndexService {
         settings.setPagination(pagination);
 
         // Lower the minimum word length for typo tolerance so short queries like "ae" match "age"
-        MinWordSizeForTypos minWordSize = new MinWordSizeForTypos();
-        minWordSize.setOneTypo(2);
-        minWordSize.setTwoTypos(4);
+        HashMap<String, Integer> minWordSizeForTypos = new HashMap<>();
+        minWordSizeForTypos.put("oneTypo", 2);
+        minWordSizeForTypos.put("twoTypos", 4);
         TypoTolerance typoTolerance = new TypoTolerance();
-        typoTolerance.setMinWordSizeForTypos(minWordSize);
+        typoTolerance.setMinWordSizeForTypos(minWordSizeForTypos);
         settings.setTypoTolerance(typoTolerance);
 
         TaskInfo updateTask = index.updateSettings(settings);
