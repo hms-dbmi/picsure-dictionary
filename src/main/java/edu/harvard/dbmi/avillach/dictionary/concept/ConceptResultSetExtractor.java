@@ -2,6 +2,8 @@ package edu.harvard.dbmi.avillach.dictionary.concept;
 
 import edu.harvard.dbmi.avillach.dictionary.concept.model.Concept;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.ConceptType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.ResultSetExtractor;
@@ -13,11 +15,12 @@ import java.util.*;
 
 @Component
 public class ConceptResultSetExtractor implements ResultSetExtractor<Concept> {
+    private static final Logger log = LoggerFactory.getLogger(ConceptResultSetExtractor.class);
     @Autowired
     private ConceptResultSetUtil conceptResultSetUtil;
 
-    private record ConceptWithId(Concept c, int id) {
-    };
+    private record ConceptWithId(Concept c, int id, boolean hasChildren) {
+    }
 
     @Override
     public Concept extractData(ResultSet rs) throws SQLException, DataAccessException {
@@ -28,7 +31,7 @@ public class ConceptResultSetExtractor implements ResultSetExtractor<Concept> {
                 case Categorical -> conceptResultSetUtil.mapCategorical(rs);
                 case Continuous -> conceptResultSetUtil.mapContinuous(rs);
             };
-            ConceptWithId conceptWithId = new ConceptWithId(c, rs.getInt("concept_node_id"));
+            ConceptWithId conceptWithId = new ConceptWithId(c, rs.getInt("concept_node_id"), rs.getBoolean("hasChildren"));
             if (root == null) {
                 root = conceptWithId;
             }
@@ -47,8 +50,12 @@ public class ConceptResultSetExtractor implements ResultSetExtractor<Concept> {
     }
 
     private Concept seedChildren(ConceptWithId root, Map<Integer, List<ConceptWithId>> conceptsByParentId) {
-        List<Concept> children = conceptsByParentId.getOrDefault(root.id, List.of()).stream()
-            .map(conceptWithId -> seedChildren(conceptWithId, conceptsByParentId)).toList();
-        return root.c.withChildren(children);
+        if (root.hasChildren) {
+            List<Concept> children = conceptsByParentId.getOrDefault(root.id, List.of()).stream()
+                .map(conceptWithId -> seedChildren(conceptWithId, conceptsByParentId)).toList();
+            return root.c.withChildren(children);
+        } else {
+            return root.c;
+        }
     }
 }
