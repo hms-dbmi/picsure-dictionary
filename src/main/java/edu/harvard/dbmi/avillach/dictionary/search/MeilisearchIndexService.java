@@ -2,7 +2,7 @@ package edu.harvard.dbmi.avillach.dictionary.search;
 
 import com.meilisearch.sdk.Client;
 import com.meilisearch.sdk.Index;
-import com.meilisearch.sdk.model.*;;
+import com.meilisearch.sdk.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
