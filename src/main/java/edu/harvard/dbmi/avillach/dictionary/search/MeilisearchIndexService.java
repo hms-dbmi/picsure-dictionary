@@ -58,7 +58,7 @@ public class MeilisearchIndexService {
 			LEFT JOIN concept_node_meta meta_min ON cn.concept_node_id = meta_min.concept_node_id AND meta_min.key = 'min'
 			LEFT JOIN concept_node_meta meta_max ON cn.concept_node_id = meta_max.concept_node_id AND meta_max.key = 'max'
 		WHERE
-			cn.concept_type IN ('Categorical', 'Continuous')
+			meta_values.value IS NOT NULL AND meta_values.value <> ''
 		ORDER BY cn.concept_node_id
 		""";
 
