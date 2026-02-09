@@ -2,8 +2,7 @@ package edu.harvard.dbmi.avillach.dictionary.search;
 
 import com.meilisearch.sdk.Client;
 import com.meilisearch.sdk.Index;
-import com.meilisearch.sdk.model.Settings;
-import com.meilisearch.sdk.model.TaskInfo;
+import com.meilisearch.sdk.model.*;;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -197,6 +196,19 @@ public class MeilisearchIndexService {
 
         // Sortable attributes for stable tie-breaking
         settings.setSortableAttributes(new String[] {"id", "allowFiltering"});
+
+        // Raise the default 1000-hit pagination ceiling so large result sets are fully navigable
+        Pagination pagination = new Pagination();
+        pagination.setMaxTotalHits(100000);
+        settings.setPagination(pagination);
+
+        // Lower the minimum word length for typo tolerance so short queries like "ae" match "age"
+        MinWordSizeForTypos minWordSize = new MinWordSizeForTypos();
+        minWordSize.setOneTypo(2);
+        minWordSize.setTwoTypos(4);
+        TypoTolerance typoTolerance = new TypoTolerance();
+        typoTolerance.setMinWordSizeForTypos(minWordSize);
+        settings.setTypoTolerance(typoTolerance);
 
         TaskInfo updateTask = index.updateSettings(settings);
         client.waitForTask(updateTask.getTaskUid());
