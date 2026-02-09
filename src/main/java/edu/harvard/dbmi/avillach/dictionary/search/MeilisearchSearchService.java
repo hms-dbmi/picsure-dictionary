@@ -4,7 +4,7 @@ import com.meilisearch.sdk.Client;
 import com.meilisearch.sdk.Index;
 import com.meilisearch.sdk.SearchRequest;
 import com.meilisearch.sdk.model.Searchable;
-import com.meilisearch.sdk.model.SearchResult;
+import com.meilisearch.sdk.model.SearchResultPaginated;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.CategoricalConcept;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.Concept;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.ConceptType;
@@ -61,13 +61,10 @@ public class MeilisearchSearchService {
         try {
             Index index = client.index(indexName);
             SearchRequest request = buildSearchRequest(filter, Pageable.unpaged());
-            // Use limit=0 to just get the count without fetching documents
-            request.setLimit(0);
             Searchable result = index.search(request);
-            if (result instanceof SearchResult sr) {
-                return sr.getEstimatedTotalHits();
+            if (result instanceof SearchResultPaginated paginated) {
+                return paginated.getTotalHits();
             }
-            // Fallback: count the hits (less accurate for large result sets)
             return result.getHits() != null ? result.getHits().size() : 0;
         } catch (Exception e) {
             LOG.error("Meilisearch count failed, filter={}", filter, e);
@@ -84,13 +81,13 @@ public class MeilisearchSearchService {
             request.setFilter(filterExpressions);
         }
 
-        // Pagination
+        // Use page/hitsPerPage mode to get exact totalHits instead of estimatedTotalHits
         if (pageable.isPaged()) {
-            request.setOffset((int) pageable.getOffset());
-            request.setLimit(pageable.getPageSize());
+            request.setPage(pageable.getPageNumber() + 1); // Meilisearch pages are 1-based
+            request.setHitsPerPage(pageable.getPageSize());
         } else {
-            // For unpaged requests (count), set a high limit
-            request.setLimit(1);
+            request.setPage(1);
+            request.setHitsPerPage(0);
         }
 
         // Sort by allowFiltering descending so stigmatized concepts appear last
