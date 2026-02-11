@@ -17,8 +17,6 @@ public class MeilisearchConceptDocument {
     private String display;
     private String conceptPath;
     private String categoricalValues;
-    private String datasetFullName;
-    private String datasetDescription;
     private String parentDisplay;
     private String grandparentDisplay;
     private String description;
@@ -74,22 +72,6 @@ public class MeilisearchConceptDocument {
 
     public void setCategoricalValues(String categoricalValues) {
         this.categoricalValues = categoricalValues;
-    }
-
-    public String getDatasetFullName() {
-        return datasetFullName;
-    }
-
-    public void setDatasetFullName(String datasetFullName) {
-        this.datasetFullName = datasetFullName;
-    }
-
-    public String getDatasetDescription() {
-        return datasetDescription;
-    }
-
-    public void setDatasetDescription(String datasetDescription) {
-        this.datasetDescription = datasetDescription;
     }
 
     public String getParentDisplay() {
@@ -213,8 +195,6 @@ public class MeilisearchConceptDocument {
         map.put("display", display);
         map.put("conceptPath", conceptPath);
         map.put("categoricalValues", categoricalValues != null ? categoricalValues : "");
-        map.put("datasetFullName", datasetFullName != null ? datasetFullName : "");
-        map.put("datasetDescription", datasetDescription != null ? datasetDescription : "");
         map.put("parentDisplay", parentDisplay != null ? parentDisplay : "");
         map.put("grandparentDisplay", grandparentDisplay != null ? grandparentDisplay : "");
         map.put("description", description != null ? description : "");

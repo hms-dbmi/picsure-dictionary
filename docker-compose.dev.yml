@@ -49,7 +49,7 @@ services:
       - MEILISEARCH_INDEXING_DEBUG_FILE=/var/log/dictionary/debug.json
       - CACHE_DURATION_MINUTES=${CACHE_DURATION_MINUTES:-60}
     ports:
-      - "8080:80"
+      - "8090:80"
     volumes:
       - ./meilisearch-output:/var/log/dictionary
     networks:

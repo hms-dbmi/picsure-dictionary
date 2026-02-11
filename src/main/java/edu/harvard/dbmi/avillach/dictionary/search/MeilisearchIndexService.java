@@ -25,18 +25,17 @@ public class MeilisearchIndexService {
     private static final Logger LOG = LoggerFactory.getLogger(MeilisearchIndexService.class);
 
     private static final int BATCH_SIZE = 1000;
-    private static final int MAX_PAYLOAD_CHARS = 50_000_000; // approximate cap to stay under Meilisearch's ~95 MiB limit
     private static final int MAX_SUBMISSION_RETRIES = 5;
     private static final long RETRY_BACKOFF_BASE_MS = 1000L;
     private static final long RETRY_BACKOFF_MAX_MS = 30_000L;
-    private static final String DEFAULT_TOO_LARGE_FILE = "to_large_data.json";
+    private static final String DEFAULT_DATASET_INDEX_NAME = "datasets";
     private static final String DEFAULT_DEBUG_FILE = "debug.json";
 
     private final Client client;
     private final NamedParameterJdbcTemplate template;
     private final String indexName;
+    private final String datasetIndexName;
     private final List<String> disallowedMetaFields;
-    private final String tooLargeFile;
     private final String debugFile;
 
     // @formatter:off
@@ -49,9 +48,7 @@ public class MeilisearchIndexService {
 			cn.concept_path,
 			cn.concept_type,
 			ds.ref AS dataset_ref,
-			ds.full_name AS dataset_full_name,
 			ds.abbreviation AS study_acronym,
-			ds.description AS dataset_description,
 			parent.display AS parent_display,
 			grandparent.display AS grandparent_display,
 			meta_desc.value AS meta_description,
@@ -74,6 +71,16 @@ public class MeilisearchIndexService {
 		LIMIT :pageSize
 		""";
 
+	private static final String DATASET_QUERY = """
+		SELECT
+			ref,
+			full_name,
+			abbreviation,
+			description
+		FROM
+			dataset
+		""";
+
 	private static final String META_VALUES_QUERY = """
 		SELECT
 			cnm.concept_node_id,
@@ -81,7 +88,7 @@ public class MeilisearchIndexService {
 		FROM
 			concept_node_meta cnm
 		WHERE
-			cnm.key NOT IN ('values', 'min', 'max', 'description')
+			cnm.key NOT IN ('min', 'max', 'drs_uri')
 			AND cnm.concept_node_id IN (:concept_node_ids)
 		GROUP BY cnm.concept_node_id
 		""";
@@ -142,15 +149,15 @@ public class MeilisearchIndexService {
 
     public MeilisearchIndexService(
         Client client, NamedParameterJdbcTemplate template, @Value("${meilisearch.index-name}") String indexName,
+        @Value("${meilisearch.dataset-index-name:" + DEFAULT_DATASET_INDEX_NAME + "}") String datasetIndexName,
         @Value("${filtering.unfilterable_concepts}") List<String> disallowedMetaFields,
-        @Value("${meilisearch.indexing.too-large-file:" + DEFAULT_TOO_LARGE_FILE + "}") String tooLargeFile,
         @Value("${meilisearch.indexing.debug-file:" + DEFAULT_DEBUG_FILE + "}") String debugFile
     ) {
         this.client = client;
         this.template = template;
         this.indexName = indexName;
+        this.datasetIndexName = datasetIndexName;
         this.disallowedMetaFields = disallowedMetaFields;
-        this.tooLargeFile = tooLargeFile;
         this.debugFile = debugFile;
     }
 
@@ -161,11 +168,17 @@ public class MeilisearchIndexService {
             long start = System.currentTimeMillis();
 
             // 1. Create/update index (enqueued; Meilisearch processes tasks in order)
-            client.createIndex(indexName, "id");
-            Index index = client.index(indexName);
+            Index index = ensureIndex(indexName, "id");
 
             // 2. Configure index settings
             configureIndex(index);
+
+            // 2a. Build dataset index (separate from concept index)
+            try {
+                buildDatasetIndex();
+            } catch (Exception e) {
+                LOG.error("Failed to build dataset index '{}'. Continuing without dataset index build.", datasetIndexName, e);
+            }
 
             // 3. Load supporting data
             Map<Integer, List<String>> consentsByDatasetId = loadConsents();
@@ -229,10 +242,7 @@ public class MeilisearchIndexService {
 
             long elapsed = System.currentTimeMillis() - start;
             if (failedBatches > 0) {
-                LOG.warn(
-                    "Meilisearch indexing skipped {} batches due to errors. See {} and {} for details.", failedBatches, tooLargeFile,
-                    debugFile
-                );
+                LOG.warn("Meilisearch indexing skipped {} batches due to errors. See {} for details.", failedBatches, debugFile);
             }
             LOG.info("Meilisearch index build complete: {} documents attempted in {} ms", totalDocsAttempted, elapsed);
         } catch (Exception e) {
@@ -245,8 +255,7 @@ public class MeilisearchIndexService {
 
         // Searchable attributes ordered by priority (weights.csv)
         settings.setSearchableAttributes(
-            new String[] {"display", "conceptPath", "categoricalValues", "datasetFullName", "datasetDescription", "parentDisplay",
-                "grandparentDisplay", "description", "metaValues"}
+            new String[] {"display", "conceptPath", "categoricalValues", "parentDisplay", "grandparentDisplay", "description", "metaValues"}
         );
 
         // Ranking rules: default + custom sort for allowFiltering demotion
@@ -269,6 +278,47 @@ public class MeilisearchIndexService {
         settings.setTypoTolerance(typoTolerance);
 
         index.updateSettings(settings);
+    }
+
+    private void buildDatasetIndex() throws Exception {
+        if (datasetIndexName == null || datasetIndexName.isBlank()) {
+            LOG.warn("Dataset index name is blank; skipping dataset index build.");
+            return;
+        }
+        if (datasetIndexName.equals(indexName)) {
+            LOG.warn("Dataset index name '{}' matches concept index name; skipping dataset index build.", datasetIndexName);
+            return;
+        }
+
+        Index datasetIndex = ensureIndex(datasetIndexName, "ref");
+        configureDatasetIndex(datasetIndex);
+        indexDatasets(datasetIndex);
+    }
+
+    private void configureDatasetIndex(Index index) throws Exception {
+        Settings settings = new Settings();
+        settings.setSearchableAttributes(new String[] {"fullName", "description", "abbreviation", "ref"});
+        index.updateSettings(settings);
+    }
+
+    private void indexDatasets(Index datasetIndex) throws Exception {
+        List<Map<String, Object>> rows = template.queryForList(DATASET_QUERY, new MapSqlParameterSource());
+        if (rows.isEmpty()) {
+            LOG.info("No datasets found for dataset index '{}'.", datasetIndexName);
+            return;
+        }
+
+        List<Map<String, Object>> docs = new ArrayList<>(rows.size());
+        for (Map<String, Object> row : rows) {
+            Map<String, Object> doc = new HashMap<>();
+            doc.put("ref", row.get("ref"));
+            doc.put("fullName", row.get("full_name"));
+            doc.put("abbreviation", row.get("abbreviation"));
+            doc.put("description", row.get("description"));
+            docs.add(doc);
+        }
+
+        datasetIndex.addDocuments(MAPPER.writeValueAsString(docs), "ref");
     }
 
     private void updateFilterableAttributes(Index index, Set<String> facetCategoryKeys) throws Exception {
@@ -376,8 +426,6 @@ public class MeilisearchIndexService {
         doc.setConceptType((String) row.get("concept_type"));
         doc.setDataset(datasetRef);
         doc.setStudyAcronym((String) row.get("study_acronym"));
-        doc.setDatasetFullName((String) row.get("dataset_full_name"));
-        doc.setDatasetDescription((String) row.get("dataset_description"));
         doc.setParentDisplay((String) row.get("parent_display"));
         doc.setGrandparentDisplay((String) row.get("grandparent_display"));
         doc.setDescription((String) row.get("meta_description"));
@@ -411,34 +459,36 @@ public class MeilisearchIndexService {
     private static final com.fasterxml.jackson.databind.ObjectMapper MAPPER = new com.fasterxml.jackson.databind.ObjectMapper();
 
     /**
-     * Index a batch. On payload_too_large (413), splits in half and retries once. If it still fails due to size, writes to the configured
-     * too-large file and continues. On other failures, retries with backoff then writes to the configured debug file and continues.
+     * Index a batch. On payload_too_large (413), splits in half recursively. Base case: a single document fails to insert and is written to
+     * the configured debug file. On other failures, retries with backoff then writes to the configured debug file and continues.
      */
     private int indexBatch(Index index, List<Map<String, Object>> batch) {
-        return indexBatch(index, batch, false);
-    }
-
-    private int indexBatch(Index index, List<Map<String, Object>> batch, boolean splitAttempted) {
         if (batch.isEmpty()) {
+            return -1;
+        }
+
+        String json;
+        try {
+            json = MAPPER.writeValueAsString(batch);
+        } catch (Exception e) {
+            LOG.error("Failed to serialize batch of {} documents. Writing to {} and continuing.", batch.size(), debugFile, e);
+            writeDebugFile(batch);
             return -1;
         }
 
         int attempts = 0;
         while (true) {
             try {
-                String json = MAPPER.writeValueAsString(batch);
-                if (!splitAttempted && batch.size() > 1 && json.length() > MAX_PAYLOAD_CHARS) {
-                    LOG.warn(
-                        "Estimated payload length {} chars exceeds {}. Splitting {} documents in half and retrying.", json.length(),
-                        MAX_PAYLOAD_CHARS, batch.size()
-                    );
-                    return splitAndIndex(index, batch);
-                }
                 TaskInfo task = index.addDocuments(json, "id");
                 return task.getTaskUid();
             } catch (Exception e) {
                 if (isPayloadTooLarge(e)) {
-                    return handlePayloadTooLarge(index, batch, splitAttempted, e);
+                    if (batch.size() == 1) {
+                        LOG.error("Payload too large for single document. Writing to {} and continuing.", debugFile, e);
+                        writeDebugFile(batch);
+                        return -1;
+                    }
+                    return splitAndIndex(index, batch);
                 }
 
                 attempts++;
@@ -464,20 +514,11 @@ public class MeilisearchIndexService {
         }
     }
 
-    private int handlePayloadTooLarge(Index index, List<Map<String, Object>> batch, boolean splitAttempted, Exception e) {
-        if (!splitAttempted && batch.size() > 1) {
-            return splitAndIndex(index, batch);
-        }
-        LOG.error("Payload too large for {} documents after split. Writing to {} and continuing.", batch.size(), tooLargeFile, e);
-        writeTooLargeFile(batch);
-        return -1;
-    }
-
     private int splitAndIndex(Index index, List<Map<String, Object>> batch) {
         int mid = batch.size() / 2;
         LOG.warn("Reducing payload by splitting {} documents into {} and {}.", batch.size(), mid, batch.size() - mid);
-        int leftTaskUid = indexBatch(index, new ArrayList<>(batch.subList(0, mid)), true);
-        int rightTaskUid = indexBatch(index, new ArrayList<>(batch.subList(mid, batch.size())), true);
+        int leftTaskUid = indexBatch(index, new ArrayList<>(batch.subList(0, mid)));
+        int rightTaskUid = indexBatch(index, new ArrayList<>(batch.subList(mid, batch.size())));
         return rightTaskUid >= 0 ? rightTaskUid : leftTaskUid;
     }
 
@@ -510,12 +551,29 @@ public class MeilisearchIndexService {
         }
     }
 
-    private synchronized void writeDebugFile(List<Map<String, Object>> batch) {
-        writeBatchToFile(batch, debugFile);
+    private Index ensureIndex(String indexUid, String primaryKey) throws Exception {
+        try {
+            client.createIndex(indexUid, primaryKey);
+        } catch (MeilisearchApiException e) {
+            if (!isIndexAlreadyExists(e)) {
+                throw e;
+            }
+            LOG.info("Meilisearch index '{}' already exists; reusing it.", indexUid);
+        }
+        return client.index(indexUid);
     }
 
-    private synchronized void writeTooLargeFile(List<Map<String, Object>> batch) {
-        writeBatchToFile(batch, tooLargeFile);
+    private boolean isIndexAlreadyExists(MeilisearchApiException e) {
+        String code = e.getCode();
+        if (code != null && code.contains("index_already_exists")) {
+            return true;
+        }
+        String message = e.getMessage();
+        return message != null && message.contains("index_already_exists");
+    }
+
+    private synchronized void writeDebugFile(List<Map<String, Object>> batch) {
+        writeBatchToFile(batch, debugFile);
     }
 
     private void writeBatchToFile(List<Map<String, Object>> batch, String fileName) {
