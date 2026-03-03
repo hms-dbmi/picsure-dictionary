@@ -2,6 +2,9 @@ package edu.harvard.dbmi.avillach.dictionary.concept;
 
 import edu.harvard.dbmi.avillach.dictionary.concept.model.Concept;
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
+import edu.harvard.dbmi.avillach.logging.LoggingClient;
+import edu.harvard.dbmi.avillach.logging.LoggingEvent;
+import edu.harvard.dbmi.avillach.logging.RequestInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -12,18 +15,21 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Controller
 public class ConceptController {
 
     private final ConceptService conceptService;
+    private final LoggingClient loggingClient;
 
     @Value("${concept.tree.max_depth:5}")
     private Integer MAX_DEPTH;
 
 
-    public ConceptController(@Autowired ConceptService conceptService) {
+    public ConceptController(@Autowired ConceptService conceptService, @Autowired LoggingClient loggingClient) {
         this.conceptService = conceptService;
+        this.loggingClient = loggingClient;
     }
 
 
@@ -33,8 +39,22 @@ public class ConceptController {
         @RequestParam(name = "page_size", defaultValue = "10", required = false) int size
     ) {
         PageRequest pagination = PageRequest.of(page, size);
+        long count = conceptService.countConcepts(filter);
         PageImpl<Concept> pageResp =
-            new PageImpl<>(conceptService.listConcepts(filter, pagination), pagination, conceptService.countConcepts(filter));
+            new PageImpl<>(conceptService.listConcepts(filter, pagination), pagination, count);
+
+        loggingClient.send(LoggingEvent.builder("SEARCH")
+            .action("CONCEPT_SEARCH")
+            .request(RequestInfo.builder()
+                .method("POST")
+                .url("/concepts")
+                .build())
+            .metadata(Map.of(
+                "search_term", filter.search() != null ? filter.search() : "",
+                "result_count", String.valueOf(count),
+                "page", String.valueOf(page)
+            ))
+            .build());
 
         return ResponseEntity.ok(pageResp);
     }
