@@ -107,11 +107,10 @@ public class ConceptFilterQueryGenerator {
             FROM
                 concept_node
                 LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id
-                LEFT JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values'
             WHERE
                 %s
                 %s
-                categorical_values.value <> ''
+                concept_node.concept_node_id IS NOT NULL
             """
             .formatted(rankQuery, rankWhere, consentWhere);
     }
@@ -140,7 +139,6 @@ public class ConceptFilterQueryGenerator {
                         LEFT JOIN facet__concept_node ON facet__concept_node.facet_id = facet.facet_id
                         JOIN facet_category ON facet_category.facet_category_id = facet.facet_category_id
                         JOIN concept_node ON concept_node.concept_node_id = facet__concept_node.concept_node_id
-                        LEFT JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values'
                         LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id
                     WHERE
                         %s
@@ -181,11 +179,10 @@ public class ConceptFilterQueryGenerator {
             FROM
                 concept_node
                 LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id
-                LEFT JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values'
             WHERE
                 %s
                 %s
-                categorical_values.value <> ''
+                concept_node.concept_node_id IS NOT NULL
             """
             .formatted(rankQuery, rankWhere, "");
     }

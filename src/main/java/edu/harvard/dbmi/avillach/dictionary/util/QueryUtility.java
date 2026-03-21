@@ -20,5 +20,5 @@ public class QueryUtility {
     public static final String SEARCH_QUERY =
         "ts_rank(searchable_fields, (phraseto_tsquery(:search)::text || ':*')::tsquery)";
     public static final String SEARCH_WHERE =
-        "(LOWER(categorical_values.VALUE) LIKE '%' || LOWER(:search) || '%' OR concept_node.searchable_fields @@ (phraseto_tsquery(:search)::text || ':*')::tsquery)";
+        "concept_node.searchable_fields @@ (phraseto_tsquery(:search)::text || ':*')::tsquery";
 }
