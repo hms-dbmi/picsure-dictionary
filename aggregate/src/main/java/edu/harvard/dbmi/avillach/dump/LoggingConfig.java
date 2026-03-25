@@ -1,4 +1,4 @@
-package edu.harvard.dbmi.avillach.dictionary;
+package edu.harvard.dbmi.avillach.dump;
 
 import edu.harvard.dbmi.avillach.logging.LoggingClient;
 import edu.harvard.dbmi.avillach.logging.LoggingClientFactory;
@@ -13,7 +13,7 @@ public class LoggingConfig implements WebMvcConfigurer {
 
     @Bean
     public LoggingClient loggingClient() {
-        return LoggingClientFactory.create("dictionary");
+        return LoggingClientFactory.create("dump");
     }
 
     @Bean

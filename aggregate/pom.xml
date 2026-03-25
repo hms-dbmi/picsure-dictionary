@@ -81,6 +81,11 @@
 			<artifactId>httpclient</artifactId>
 			<version>4.5.14</version>
 		</dependency>
+		<dependency>
+			<groupId>edu.harvard.dbmi.avillach</groupId>
+			<artifactId>pic-sure-logging-client</artifactId>
+			<version>1.0.0</version>
+		</dependency>
 	</dependencies>
 
 	<build>
