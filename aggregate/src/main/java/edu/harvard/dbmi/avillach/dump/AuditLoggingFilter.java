@@ -11,6 +11,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import edu.harvard.dbmi.avillach.logging.LoggingClient;
 import edu.harvard.dbmi.avillach.logging.LoggingEvent;
 import edu.harvard.dbmi.avillach.logging.RequestInfo;
+import edu.harvard.dbmi.avillach.logging.SessionIdResolver;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -80,13 +81,7 @@ public class AuditLoggingFilter extends OncePerRequestFilter {
                     .bytes(bytes).build();
 
                 Map<String, Object> metadata = new HashMap<>();
-                String sessionId = request.getHeader("X-Session-Id");
-                if (sessionId == null || sessionId.isEmpty()) {
-                    String raw = (srcIp != null ? srcIp : "") + "|"
-                        + (request.getHeader("User-Agent") != null ? request.getHeader("User-Agent") : "");
-                    sessionId = Integer.toHexString(raw.hashCode());
-                }
-                metadata.put("session_id", sessionId);
+                String sessionId = SessionIdResolver.resolve(request.getHeader("X-Session-Id"), srcIp, request.getHeader("User-Agent"));
 
                 AuditAttributes.getMetadata(request).forEach(metadata::putIfAbsent);
 
@@ -97,7 +92,7 @@ public class AuditLoggingFilter extends OncePerRequestFilter {
                     errorMap.put("error_type", responseStatus >= 500 ? "server_error" : "client_error");
                 }
 
-                LoggingEvent.Builder eventBuilder = LoggingEvent.builder(eventType).action(action).request(requestInfo).metadata(metadata);
+                LoggingEvent.Builder eventBuilder = LoggingEvent.builder(eventType).action(action).sessionId(sessionId).request(requestInfo).metadata(metadata);
                 if (errorMap != null) eventBuilder.error(errorMap);
                 LoggingEvent event = eventBuilder.build();
 
