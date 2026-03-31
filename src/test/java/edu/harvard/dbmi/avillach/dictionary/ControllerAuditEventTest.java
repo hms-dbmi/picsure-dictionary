@@ -17,8 +17,8 @@ import java.util.List;
 
 class ControllerAuditEventTest {
 
-    private void assertAuditEvent(Class<?> controller, String methodName, Class<?>[] params, String expectedType,
-        String expectedAction) throws Exception {
+    private void assertAuditEvent(Class<?> controller, String methodName, Class<?>[] params, String expectedType, String expectedAction)
+        throws Exception {
         Method method = controller.getMethod(methodName, params);
         AuditEvent event = method.getAnnotation(AuditEvent.class);
         assertNotNull(event, controller.getSimpleName() + "." + methodName + " missing @AuditEvent");

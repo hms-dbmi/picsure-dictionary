@@ -21,26 +21,14 @@ public class AuditLoggingFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(AuditLoggingFilter.class);
 
-    private static final String DEST_IP;
-    private static final Integer DEST_PORT;
-
-    static {
-        DEST_IP = System.getenv("DEST_IP");
-        Integer port = null;
-        String portStr = System.getenv("DEST_PORT");
-        if (portStr != null) {
-            try {
-                port = Integer.parseInt(portStr);
-            } catch (NumberFormatException e) {
-            }
-        }
-        DEST_PORT = port;
-    }
-
+    private final String destIpConfig;
+    private final Integer destPortConfig;
     private final LoggingClient loggingClient;
 
-    public AuditLoggingFilter(LoggingClient loggingClient) {
+    public AuditLoggingFilter(LoggingClient loggingClient, String destIp, Integer destPort) {
         this.loggingClient = loggingClient;
+        this.destIpConfig = destIp;
+        this.destPortConfig = destPort;
     }
 
     @Override
@@ -69,8 +57,8 @@ public class AuditLoggingFilter extends OncePerRequestFilter {
                 if (action == null) action = method.toLowerCase();
 
                 String srcIp = extractSourceIp(request);
-                String destIp = DEST_IP != null ? DEST_IP : request.getLocalAddr();
-                int destPort = DEST_PORT != null ? DEST_PORT : request.getLocalPort();
+                String destIp = destIpConfig != null ? destIpConfig : request.getLocalAddr();
+                int destPort = destPortConfig != null ? destPortConfig : request.getLocalPort();
 
                 int responseStatus = response.getStatus();
                 String contentType = response.getContentType();
@@ -92,7 +80,8 @@ public class AuditLoggingFilter extends OncePerRequestFilter {
                     errorMap.put("error_type", responseStatus >= 500 ? "server_error" : "client_error");
                 }
 
-                LoggingEvent.Builder eventBuilder = LoggingEvent.builder(eventType).action(action).sessionId(sessionId).request(requestInfo).metadata(metadata);
+                LoggingEvent.Builder eventBuilder =
+                    LoggingEvent.builder(eventType).action(action).sessionId(sessionId).request(requestInfo).metadata(metadata);
                 if (errorMap != null) eventBuilder.error(errorMap);
                 LoggingEvent event = eventBuilder.build();
 
