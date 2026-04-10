@@ -24,12 +24,15 @@ public class QueryUtility {
         """;
 
     /**
-     * Ranking expression for search results. Uses PostgreSQL ts_rank against the
-     * pre-built tsvector column (searchable_fields) with prefix matching.
-     * Expects a :search named parameter.
+     * Converts a raw search string into a prefix-matching tsquery.
+     * Splits on whitespace, appends :* to each word, and ANDs them together.
+     * e.g. "ear infection" becomes to_tsquery('english', 'ear:* & infection:*')
      */
+    private static final String TSQUERY_EXPR =
+        "to_tsquery('english', regexp_replace(trim(:search), '\\s+', ':* & ', 'g') || ':*')";
+
     public static final String SEARCH_QUERY =
-        "ts_rank(searchable_fields, to_tsquery('english', :search || ':*'))";
+        "ts_rank(searchable_fields, " + TSQUERY_EXPR + ")";
 
     /**
      * WHERE clause filter for full-text search. Uses the GIN-indexed searchable_fields
@@ -37,5 +40,5 @@ public class QueryUtility {
      * Expects a :search named parameter.
      */
     public static final String SEARCH_WHERE =
-        "concept_node.searchable_fields @@ to_tsquery('english', :search || ':*')";
+        "concept_node.searchable_fields @@ " + TSQUERY_EXPR;
 }
