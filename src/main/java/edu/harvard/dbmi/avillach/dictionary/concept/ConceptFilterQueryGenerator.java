@@ -16,18 +16,16 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Builds dynamic SQL for concept search queries. Handles facet filtering, consent-based
- * dataset scoping, full-text search ranking, and pagination. The generated queries use
- * INTERSECT to AND facet categories together and a ranking CTE to order results.
+ * Builds dynamic SQL for concept search queries. Handles facet filtering, consent-based dataset scoping, full-text search ranking, and
+ * pagination. The generated queries use INTERSECT to AND facet categories together and a ranking CTE to order results.
  */
 @Component
 public class ConceptFilterQueryGenerator {
     private final List<String> disallowedMetaFields;
 
     /**
-     * CTE fragment that computes a rank adjustment multiplier per concept.
-     * Concepts flagged with disallowed meta keys (e.g. stigmatized=true) get a multiplier of 0,
-     * pushing them to the bottom of search results without excluding them entirely.
+     * CTE fragment that computes a rank adjustment multiplier per concept. Concepts flagged with disallowed meta keys (e.g.
+     * stigmatized=true) get a multiplier of 0, pushing them to the bottom of search results without excluding them entirely.
      */
     private static final String RANK_ADJUSTMENTS = """
         , allow_filtering AS (
@@ -42,9 +40,8 @@ public class ConceptFilterQueryGenerator {
         """;
 
     /**
-     * WHERE clause fragment that restricts results to datasets the user has consent for.
-     * Resolves both direct consent codes (phs000123.c1) and harmonized dataset mappings.
-     * Expects a :consents named parameter containing the user's consent list.
+     * WHERE clause fragment that restricts results to datasets the user has consent for. Resolves both direct consent codes (phs000123.c1)
+     * and harmonized dataset mappings. Expects a :consents named parameter containing the user's consent list.
      */
     private static final String CONSENT_QUERY = """
         dataset.dataset_id IN (
@@ -101,8 +98,8 @@ public class ConceptFilterQueryGenerator {
     }
 
     /**
-     * Creates the base concept search clause. Filters to displayable concepts (those with a non-empty
-     * 'values' meta key), applies full-text search if present, and scopes by consent if authenticated.
+     * Creates the base concept search clause. Filters to displayable concepts (those with a non-empty 'values' meta key), applies full-text
+     * search if present, and scopes by consent if authenticated.
      */
     private String createValuelessNodeFilter(String search, List<String> consents) {
         String rankQuery = "0";
@@ -129,9 +126,8 @@ public class ConceptFilterQueryGenerator {
     }
 
     /**
-     * Creates one INTERSECT clause per facet category. Within a category, selected facets are ORed;
-     * across categories, clauses are ANDed via INTERSECT. Each clause returns concept_node_ids
-     * with their search rank.
+     * Creates one INTERSECT clause per facet category. Within a category, selected facets are ORed; across categories, clauses are ANDed
+     * via INTERSECT. Each clause returns concept_node_ids with their search rank.
      */
     private List<String> createFacetFilter(Filter filter, MapSqlParameterSource params) {
         String consentWhere = CollectionUtils.isEmpty(filter.consents()) ? "" : CONSENT_QUERY;
@@ -165,8 +161,7 @@ public class ConceptFilterQueryGenerator {
                     GROUP BY
                         facet__concept_node.concept_node_id
                 )
-                """
-                .formatted(rankQuery, rankWhere, consentWhere, facetsForCategory.getKey(), facetsForCategory.getKey());
+                """.formatted(rankQuery, rankWhere, consentWhere, facetsForCategory.getKey(), facetsForCategory.getKey());
         }).toList();
     }
 
@@ -206,9 +201,8 @@ public class ConceptFilterQueryGenerator {
     }
 
     /**
-     * Wraps all filter clauses into a single ranked CTE (concepts_filtered_sorted).
-     * Clauses are INTERSECTed, then joined with the rank adjustment CTE to produce
-     * a final ordering where unfilterable concepts are demoted. Adds LIMIT/OFFSET if paged.
+     * Wraps all filter clauses into a single ranked CTE (concepts_filtered_sorted). Clauses are INTERSECTed, then joined with the rank
+     * adjustment CTE to produce a final ordering where unfilterable concepts are demoted. Adds LIMIT/OFFSET if paged.
      */
     private static String getSuperQuery(Pageable pageable, List<String> clauses, MapSqlParameterSource params) {
         String query = "(\n" + String.join("\n\tINTERSECT\n", clauses) + "\n)";

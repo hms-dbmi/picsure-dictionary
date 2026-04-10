@@ -14,10 +14,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Builds dynamic SQL for facet count queries. Supports three modes: no facets selected,
- * single category selected, and multi-category selected. Each mode has search and no-search
- * variants. Facet counts reflect how many displayable concepts match each facet, scoped
- * by the current search term and consent restrictions.
+ * Builds dynamic SQL for facet count queries. Supports three modes: no facets selected, single category selected, and multi-category
+ * selected. Each mode has search and no-search variants. Facet counts reflect how many displayable concepts match each facet, scoped by the
+ * current search term and consent restrictions.
  */
 @Component
 public class FacetQueryGenerator {

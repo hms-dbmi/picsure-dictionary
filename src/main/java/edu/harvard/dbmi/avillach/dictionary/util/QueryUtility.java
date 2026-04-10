@@ -6,10 +6,8 @@ package edu.harvard.dbmi.avillach.dictionary.util;
 public class QueryUtility {
 
     /**
-     * CTE that determines whether each concept should be filterable in the UI.
-     * Concepts with disallowed meta keys set to 'true' (e.g. stigmatized) are marked as non-filterable,
-     * which demotes them in search ranking.
-     * Expects a :disallowed_meta_keys named parameter.
+     * CTE that determines whether each concept should be filterable in the UI. Concepts with disallowed meta keys set to 'true' (e.g.
+     * stigmatized) are marked as non-filterable, which demotes them in search ranking. Expects a :disallowed_meta_keys named parameter.
      */
     public static final String ALLOW_FILTERING_Q = """
         WITH allow_filtering AS (
@@ -24,21 +22,16 @@ public class QueryUtility {
         """;
 
     /**
-     * Converts a raw search string into a prefix-matching tsquery.
-     * Splits on whitespace, appends :* to each word, and ANDs them together.
+     * Converts a raw search string into a prefix-matching tsquery. Splits on whitespace, appends :* to each word, and ANDs them together.
      * e.g. "ear infection" becomes to_tsquery('english', 'ear:* & infection:*')
      */
-    private static final String TSQUERY_EXPR =
-        "to_tsquery('english', regexp_replace(trim(:search), '\\s+', ':* & ', 'g') || ':*')";
+    private static final String TSQUERY_EXPR = "to_tsquery('english', regexp_replace(trim(:search), '\\s+', ':* & ', 'g') || ':*')";
 
-    public static final String SEARCH_QUERY =
-        "ts_rank(searchable_fields, " + TSQUERY_EXPR + ")";
+    public static final String SEARCH_QUERY = "ts_rank(searchable_fields, " + TSQUERY_EXPR + ")";
 
     /**
-     * WHERE clause filter for full-text search. Uses the GIN-indexed searchable_fields
-     * tsvector column with prefix matching via to_tsquery.
+     * WHERE clause filter for full-text search. Uses the GIN-indexed searchable_fields tsvector column with prefix matching via to_tsquery.
      * Expects a :search named parameter.
      */
-    public static final String SEARCH_WHERE =
-        "concept_node.searchable_fields @@ " + TSQUERY_EXPR;
+    public static final String SEARCH_WHERE = "concept_node.searchable_fields @@ " + TSQUERY_EXPR;
 }
