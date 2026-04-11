@@ -420,8 +420,7 @@ public class FacetQueryGenerator {
     }
 
     private String createNoFacetSQLNoSearch(MapSqlParameterSource params, String consents) {
-        // return all the facets that match displayable concepts
-        // this is the easy one!
+        String whereClause = StringUtils.hasLength(consents) ? consents.strip().replaceAll("\\s+AND\\s*$", "") : "TRUE";
         return """
             SELECT
                 facet.facet_id, count(*) as facet_count
@@ -434,12 +433,11 @@ public class FacetQueryGenerator {
                 JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values' AND categorical_values.value <> ''
             WHERE
                 %s
-                TRUE
             GROUP BY
                 facet.facet_id
             ORDER BY
                 facet_count DESC
             """
-            .formatted(consents);
+            .formatted(whereClause);
     }
 }

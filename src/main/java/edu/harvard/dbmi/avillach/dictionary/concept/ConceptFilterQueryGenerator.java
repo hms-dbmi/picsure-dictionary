@@ -14,6 +14,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Builds dynamic SQL for concept search queries. Handles facet filtering, consent-based dataset scoping, full-text search ranking, and
@@ -103,12 +104,17 @@ public class ConceptFilterQueryGenerator {
      */
     private String createValuelessNodeFilter(String search, List<String> consents) {
         String rankQuery = "0";
-        String rankWhere = "";
+        String searchCondition = "";
         if (StringUtils.hasLength(search)) {
             rankQuery = QueryUtility.SEARCH_QUERY;
-            rankWhere = QueryUtility.SEARCH_WHERE + " AND ";
+            searchCondition = QueryUtility.SEARCH_WHERE;
         }
-        String consentWhere = CollectionUtils.isEmpty(consents) ? "" : CONSENT_QUERY;
+        String consentCondition = CollectionUtils.isEmpty(consents) ? "" : CONSENT_QUERY.strip().replaceAll("\\s+AND\\s*$", "");
+        String whereClause = Stream.of(searchCondition, consentCondition).filter(StringUtils::hasLength)
+            .collect(Collectors.joining("\n                AND "));
+        if (!StringUtils.hasLength(whereClause)) {
+            whereClause = "TRUE";
+        }
         return """
             SELECT
                 concept_node.concept_node_id,
@@ -119,10 +125,8 @@ public class ConceptFilterQueryGenerator {
                 JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values' AND categorical_values.value <> ''
             WHERE
                 %s
-                %s
-                TRUE
             """
-            .formatted(rankQuery, rankWhere, consentWhere);
+            .formatted(rankQuery, whereClause);
     }
 
     /**
@@ -180,10 +184,10 @@ public class ConceptFilterQueryGenerator {
 
     private String createDynamicValuelessNodeFilter(String search) {
         String rankQuery = "0 as rank";
-        String rankWhere = "";
+        String whereClause = "TRUE";
         if (StringUtils.hasLength(search)) {
             rankQuery = "ts_rank(searchable_fields, to_tsquery(:dynamic_tsquery)) AS rank";
-            rankWhere = "concept_node.searchable_fields @@ to_tsquery(:dynamic_tsquery) AND";
+            whereClause = "concept_node.searchable_fields @@ to_tsquery(:dynamic_tsquery)";
         }
         return """
             SELECT
@@ -195,9 +199,8 @@ public class ConceptFilterQueryGenerator {
                 JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values' AND categorical_values.value <> ''
             WHERE
                 %s
-                TRUE
             """
-            .formatted(rankQuery, rankWhere);
+            .formatted(rankQuery, whereClause);
     }
 
     /**
