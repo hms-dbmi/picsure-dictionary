@@ -22,8 +22,9 @@ public class QueryUtility {
         """;
 
     /**
-     * Converts a raw search string into a prefix-matching tsquery. Splits on whitespace, appends :* to each word, and ANDs them together.
-     * e.g. "ear infection" becomes to_tsquery('english', 'ear:* & infection:*')
+     * Converts a pre-sanitized search string into a prefix-matching tsquery. Input is sanitized by FilterProcessor.sanitizeSearch() before
+     * reaching SQL — only contains Unicode letters, digits, and single spaces. Splits on whitespace, appends :* to each word, and ANDs them
+     * together. e.g. "ear infection" becomes to_tsquery('english', 'ear:* & infection:*')
      */
     private static final String TSQUERY_EXPR = "to_tsquery('english', regexp_replace(trim(:search), '\\s+', ':* & ', 'g') || ':*')";
 
@@ -31,7 +32,7 @@ public class QueryUtility {
 
     /**
      * WHERE clause filter for full-text search. Uses the GIN-indexed searchable_fields tsvector column with prefix matching via to_tsquery.
-     * Expects a :search named parameter.
+     * Expects a :search named parameter that has been pre-sanitized by FilterProcessor.
      */
     public static final String SEARCH_WHERE = "concept_node.searchable_fields @@ " + TSQUERY_EXPR;
 }
