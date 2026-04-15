@@ -109,6 +109,8 @@ public class ConceptFilterQueryGenerator {
             rankQuery = QueryUtility.SEARCH_QUERY;
             searchCondition = QueryUtility.SEARCH_WHERE;
         }
+        // CONSENT_QUERY ends with "AND" so it can be chained with other conditions. Strip the trailing AND here
+        // because this string is assembled separately and joined via Stream.of() below — it must stand alone.
         String consentCondition = CollectionUtils.isEmpty(consents) ? "" : CONSENT_QUERY.strip().replaceAll("\\s+AND\\s*$", "");
         String whereClause = Stream.of(searchCondition, consentCondition).filter(StringUtils::hasLength)
             .collect(Collectors.joining("\n                AND "));
