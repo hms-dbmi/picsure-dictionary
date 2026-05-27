@@ -77,7 +77,11 @@ public class JsonBlobParser {
             // convert the list to a flat map
             Map<String, String> map = new HashMap<>();
             for (Map<String, String> entry : maps) {
-                String prettyKey = Arrays.stream(entry.get("key").split("_"))
+                String rawKey = entry.get("key");
+                if (rawKey == null || rawKey.isBlank()) {
+                    throw new IllegalStateException("parseMetaData() Missing metadata key. Entry: " + entry);
+                }
+                String prettyKey = Arrays.stream(rawKey.split("_")).filter(word -> !word.isBlank())
                     .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase()).collect(Collectors.joining(" "));
                 if (map.put(prettyKey, entry.get("value")) != null) {
                     throw new IllegalStateException(

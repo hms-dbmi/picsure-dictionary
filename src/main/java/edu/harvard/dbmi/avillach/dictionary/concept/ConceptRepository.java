@@ -321,7 +321,7 @@ public class ConceptRepository {
                      categorical_values.VALUE as values,
                      coalesce(allow_filtering.allowFiltering, TRUE) AS allowFiltering,
                      meta_description.VALUE AS description,
-                     aggregated_meta.metadata AS metadata
+                     coalesce(aggregated_meta.metadata, '[]'::json) AS metadata
                  FROM
                      filtered_concepts as concept_node
                      LEFT JOIN dataset AS ds ON concept_node.dataset_id = ds.dataset_id
