@@ -4,6 +4,7 @@ import edu.harvard.dbmi.avillach.dictionary.concept.model.Concept;
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
 import edu.harvard.dbmi.avillach.dictionary.filter.QueryParamPair;
 import edu.harvard.dbmi.avillach.dictionary.util.MapExtractor;
+import edu.harvard.dbmi.avillach.dictionary.util.MapExtractorWithPrettyKeys;
 import edu.harvard.dbmi.avillach.dictionary.util.QueryUtility;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -128,7 +129,7 @@ public class ConceptRepository {
                 AND dataset.REF = :dataset
             """;
         MapSqlParameterSource params = new MapSqlParameterSource().addValue("conceptPath", conceptPath).addValue("dataset", dataset).addValue("noShowList", noShowList);
-        return template.query(sql, params, new MapExtractor("KEY", "VALUE"));
+        return template.query(sql, params, new MapExtractorWithPrettyKeys("KEY", "VALUE"));
     }
 
     public Map<Concept, Map<String, String>> getConceptMetaForConcepts(List<Concept> concepts) {
