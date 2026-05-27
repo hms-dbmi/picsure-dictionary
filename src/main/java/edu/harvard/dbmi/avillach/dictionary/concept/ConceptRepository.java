@@ -7,7 +7,6 @@ import edu.harvard.dbmi.avillach.dictionary.util.MapExtractor;
 import edu.harvard.dbmi.avillach.dictionary.util.QueryUtility;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
