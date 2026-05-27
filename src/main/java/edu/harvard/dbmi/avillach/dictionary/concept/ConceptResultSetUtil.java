@@ -25,8 +25,7 @@ public class ConceptResultSetUtil {
         Map<String, String> metadata = jsonBlobParser.parseMetaData(rs.getString("metadata"));
         return new CategoricalConcept(
             rs.getString("concept_path"), rs.getString("name"), rs.getString("display"), rs.getString("dataset"),
-            rs.getString("description"), null,
-            rs.getBoolean("allowFiltering"), rs.getString("studyAcronym"), null, metadata
+            rs.getString("description"), null, rs.getBoolean("allowFiltering"), rs.getString("studyAcronym"), null, metadata
         );
 
     }
@@ -43,8 +42,7 @@ public class ConceptResultSetUtil {
         Map<String, String> metadata = jsonBlobParser.parseMetaData(rs.getString("metadata"));
         return new ContinuousConcept(
             rs.getString("concept_path"), rs.getString("name"), rs.getString("display"), rs.getString("dataset"),
-            rs.getString("description"), rs.getBoolean("allowFiltering"), null,
-            null, rs.getString("studyAcronym"), metadata
+            rs.getString("description"), rs.getBoolean("allowFiltering"), null, null, rs.getString("studyAcronym"), metadata
         );
     }
 

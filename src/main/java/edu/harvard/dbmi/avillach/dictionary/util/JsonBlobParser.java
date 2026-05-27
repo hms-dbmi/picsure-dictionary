@@ -77,11 +77,12 @@ public class JsonBlobParser {
             // convert the list to a flat map
             Map<String, String> map = new HashMap<>();
             for (Map<String, String> entry : maps) {
-                String prettyKey = Arrays.stream(entry.get("key").split("_")).map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase())
-                                      .collect(Collectors.joining(" "));
+                String prettyKey = Arrays.stream(entry.get("key").split("_"))
+                    .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase()).collect(Collectors.joining(" "));
                 if (map.put(prettyKey, entry.get("value")) != null) {
                     throw new IllegalStateException(
-                        "parseMetaData() Duplicate key found in metadata. Key: "+ prettyKey + "(" + entry.get("key") + ") Value: " + entry.get("value")
+                        "parseMetaData() Duplicate key found in metadata. Key: " + prettyKey + "(" + entry.get("key") + ") Value: "
+                            + entry.get("value")
                     );
                 }
             }

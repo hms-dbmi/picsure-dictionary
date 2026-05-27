@@ -128,7 +128,8 @@ public class ConceptRepository {
                 AND concept_node_meta.key NOT IN (:noShowList)
                 AND dataset.REF = :dataset
             """;
-        MapSqlParameterSource params = new MapSqlParameterSource().addValue("conceptPath", conceptPath).addValue("dataset", dataset).addValue("noShowList", noShowList);
+        MapSqlParameterSource params = new MapSqlParameterSource().addValue("conceptPath", conceptPath).addValue("dataset", dataset)
+            .addValue("noShowList", noShowList);
         return template.query(sql, params, new MapExtractorWithPrettyKeys("KEY", "VALUE"));
     }
 
@@ -250,6 +251,7 @@ public class ConceptRepository {
 
         return Optional.ofNullable(template.query(sql, params, conceptResultSetExtractor));
     }
+
     public List<Concept> getConceptHierarchy(String dataset, String conceptPath) {
         String sql =
             """
@@ -331,8 +333,8 @@ public class ConceptRepository {
                      LEFT JOIN aggregated_meta ON concept_node.concept_node_id = aggregated_meta.concept_node_id
                 """;
 
-        MapSqlParameterSource params =
-            new MapSqlParameterSource().addValue("conceptPaths", conceptPaths).addValue("disallowed_meta_keys", disallowedMetaFields).addValue("noShowList", noShowList);
+        MapSqlParameterSource params = new MapSqlParameterSource().addValue("conceptPaths", conceptPaths)
+            .addValue("disallowed_meta_keys", disallowedMetaFields).addValue("noShowList", noShowList);
         return template.query(sql, params, conceptRowWithMetaMapper);
     }
 }

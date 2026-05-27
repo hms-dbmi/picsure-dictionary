@@ -23,8 +23,8 @@ public class MapExtractorWithPrettyKeys implements ResultSetExtractor<Map<String
     public Map<String, String> extractData(ResultSet rs) throws SQLException, DataAccessException {
         Map<String, String> map = new HashMap<>();
         while (rs.next() && rs.getString(keyName) != null) {
-            String prettyKey = Arrays.stream(rs.getString(keyName).split("_")).map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase())
-                                  .collect(Collectors.joining(" "));
+            String prettyKey = Arrays.stream(rs.getString(keyName).split("_"))
+                .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase()).collect(Collectors.joining(" "));
             map.put(prettyKey, rs.getString(valueName));
         }
         return map;
