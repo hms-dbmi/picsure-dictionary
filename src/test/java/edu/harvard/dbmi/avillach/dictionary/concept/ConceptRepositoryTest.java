@@ -204,12 +204,12 @@ class ConceptRepositoryTest {
         Map<Concept, Map<String, String>> expected = Map.of(
             new ConceptShell("\\phs000007\\pht000033\\phv00008849\\D080\\", "phs000007"),
             Map.of(
-                "unique_identifier", "false", "bdc_open_access", "true", "description",
-                "# 12 OZ CUPS OF CAFFEINATED COLA/DAY", "free_text", "false"
+                "unique_identifier", "false", "bdc_open_access", "true", "description", "# 12 OZ CUPS OF CAFFEINATED COLA/DAY", "free_text",
+                "false"
             ), new ConceptShell("\\phs000007\\pht000022\\phv00004260\\FM219\\", "phs000007"),
             Map.of(
-                "unique_identifier", "false", "bdc_open_access", "true", "description",
-                "# 12 OZ CUPS OF CAFFEINATED COLA / DAY", "free_text", "false"
+                "unique_identifier", "false", "bdc_open_access", "true", "description", "# 12 OZ CUPS OF CAFFEINATED COLA / DAY",
+                "free_text", "false"
             )
         );
         assertEquals(expected, actual);
