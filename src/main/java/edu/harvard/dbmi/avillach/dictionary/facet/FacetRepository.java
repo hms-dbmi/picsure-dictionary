@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -27,7 +28,9 @@ public class FacetRepository {
         this.mapper = mapper;
     }
 
+    @Transactional(readOnly = true)
     public List<FacetCategory> getFacets(Filter filter) {
+        template.getJdbcTemplate().execute("SET LOCAL work_mem = '64MB'");
         MapSqlParameterSource params = new MapSqlParameterSource();
         String innerSQL = generator.createFacetSQLAndPopulateParams(filter, params);
         // return a list of facets and the number of concepts associated with them
