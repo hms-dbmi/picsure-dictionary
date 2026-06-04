@@ -103,9 +103,9 @@ public class FacetQueryGenerator {
                         JOIN facet__concept_node fcn ON fcn.facet_id = facet.facet_id
                         JOIN facet_category fc on fc.facet_category_id = facet.facet_category_id
                         JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
-                        JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values' AND categorical_values.value <> ''
                     WHERE
-                        (fc.name, facet.name) IN (:facets_in_cat_%s)
+                        concept_node.is_queryable = TRUE
+                        AND (fc.name, facet.name) IN (:facets_in_cat_%s)
                         AND %s
                 )
                 """
@@ -193,9 +193,9 @@ public class FacetQueryGenerator {
                         JOIN facet__concept_node fcn ON fcn.facet_id = facet.facet_id
                         JOIN facet_category fc on fc.facet_category_id = facet.facet_category_id
                         JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
-                        JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values' AND categorical_values.value <> ''
                     WHERE
-                        (fc.name, facet.name) IN (:facets_in_cat_%s)
+                        concept_node.is_queryable = TRUE
+                        AND (fc.name, facet.name) IN (:facets_in_cat_%s)
                 )
                 """
                 .formatted(categoryKeys.get(category), categoryKeys.get(category));
@@ -284,9 +284,9 @@ public class FacetQueryGenerator {
                     JOIN facet_category fc on fc.facet_category_id = facet.facet_category_id
                     JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
                     LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id
-                    JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values' AND categorical_values.value <> ''
                 WHERE
-                    %s
+                    concept_node.is_queryable = TRUE
+                    AND %s
                     fc.name = :facet_category_name
                     AND %s
                 GROUP BY
@@ -304,9 +304,9 @@ public class FacetQueryGenerator {
                         JOIN facet_category fc on fc.facet_category_id = facet.facet_category_id
                         JOIN facet__concept_node fcn ON fcn.facet_id = facet.facet_id
                         JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
-                        JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values' AND categorical_values.value <> ''
                     WHERE
-                        fc.name = :facet_category_name
+                        concept_node.is_queryable = TRUE
+                        AND fc.name = :facet_category_name
                         AND facet.name IN (:facets)
                         AND %s
                 )
@@ -347,9 +347,9 @@ public class FacetQueryGenerator {
                     JOIN facet_category fc on fc.facet_category_id = facet.facet_category_id
                     JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
                     LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id
-                    JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values' AND categorical_values.value <> ''
                 WHERE
-                    %s
+                    concept_node.is_queryable = TRUE
+                    AND %s
                     fc.name = :facet_category_name
                 GROUP BY
                     facet.facet_id
@@ -366,9 +366,9 @@ public class FacetQueryGenerator {
                         JOIN facet__concept_node fcn ON fcn.facet_id = facet.facet_id
                         JOIN facet_category fc on fc.facet_category_id = facet.facet_category_id
                         JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
-                        JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values' AND categorical_values.value <> ''
                     WHERE
-                        fc.name = :facet_category_name
+                        concept_node.is_queryable = TRUE
+                        AND fc.name = :facet_category_name
                         AND facet.name IN (:facets)
                 )
                 SELECT
@@ -406,9 +406,9 @@ public class FacetQueryGenerator {
                 JOIN facet_category fc on fc.facet_category_id = facet.facet_category_id
                 JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
                 LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id
-                JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values' AND categorical_values.value <> ''
             WHERE
-                %s
+                concept_node.is_queryable = TRUE
+                AND %s
                 %s
             GROUP BY
                 facet.facet_id
@@ -430,9 +430,9 @@ public class FacetQueryGenerator {
                 JOIN facet_category fc on fc.facet_category_id = facet.facet_category_id
                 JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
                 LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id
-                JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values' AND categorical_values.value <> ''
             WHERE
-                %s
+                concept_node.is_queryable = TRUE
+                AND %s
             GROUP BY
                 facet.facet_id
             ORDER BY

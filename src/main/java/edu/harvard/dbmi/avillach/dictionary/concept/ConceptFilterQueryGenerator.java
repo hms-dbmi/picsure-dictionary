@@ -124,9 +124,9 @@ public class ConceptFilterQueryGenerator {
             FROM
                 concept_node
                 LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id
-                JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values' AND categorical_values.value <> ''
             WHERE
-                %s
+                concept_node.is_queryable = TRUE
+                AND %s
             """
             .formatted(rankQuery, whereClause);
     }
@@ -198,9 +198,9 @@ public class ConceptFilterQueryGenerator {
             FROM
                 concept_node
                 LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id
-                JOIN concept_node_meta AS categorical_values ON concept_node.concept_node_id = categorical_values.concept_node_id AND categorical_values.KEY = 'values' AND categorical_values.value <> ''
             WHERE
-                %s
+                concept_node.is_queryable = TRUE
+                AND %s
             """
             .formatted(rankQuery, whereClause);
     }
