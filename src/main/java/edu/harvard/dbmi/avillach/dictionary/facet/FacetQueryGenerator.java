@@ -75,9 +75,8 @@ public class FacetQueryGenerator {
     }
 
     /**
-     * Returns independent count queries for multi-category facet requests, one per UNION block.
-     * Each query includes the shared CTEs and can be executed in parallel.
-     * Returns (facet_name, category_name, facet_count) rows for merging in Java.
+     * Returns independent count queries for multi-category facet requests, one per UNION block. Each query includes the shared CTEs and can
+     * be executed in parallel. Returns (facet_name, category_name, facet_count) rows for merging in Java.
      */
     public List<QueryParamPair> createMultiCategoryCountBlocks(Filter filter) {
         Map<String, List<Facet>> groupedFacets =
@@ -125,8 +124,7 @@ public class FacetQueryGenerator {
 
         // One block per selected category: filtered by OTHER categories' concepts
         for (String category : groupedFacets.keySet()) {
-            String existsChain = categoryKeys.values().stream()
-                .filter(key -> !categoryKeys.get(category).equals(key))
+            String existsChain = categoryKeys.values().stream().filter(key -> !categoryKeys.get(category).equals(key))
                 .map(key -> "EXISTS (SELECT 1 FROM facet_category_" + key + "_concepts c WHERE c.concept_node_id = fcn.concept_node_id)")
                 .collect(Collectors.joining("\n                AND "));
             String block = ctePrefix + """
@@ -179,11 +177,9 @@ public class FacetQueryGenerator {
     ) {
         Map<String, String> categoryKeys = createSQLSafeCategoryKeys(facets.keySet().stream().toList());
         params.addValue("search", search);
-        String consentJoins = StringUtils.hasLength(consentWhere)
-            ? """
-                LEFT JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
-                LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id"""
-            : "";
+        String consentJoins = StringUtils.hasLength(consentWhere) ? """
+            LEFT JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
+            LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id""" : "";
 
         /*
          * For each category of facet present in the filter, create a query that represents all the concept IDs associated with the selected
@@ -208,8 +204,7 @@ public class FacetQueryGenerator {
                         AND (fc.name, facet.name) IN (:facets_in_cat_%s)
                         AND %s
                 )
-                """
-                .formatted(categoryKeys.get(category), categoryKeys.get(category), QueryUtility.SEARCH_WHERE);
+                """.formatted(categoryKeys.get(category), categoryKeys.get(category), QueryUtility.SEARCH_WHERE);
         }).collect(Collectors.joining(",\n"));
         /*
          * Categories with no selected facets contribute no concepts, so ignore them for now. Now, for each category with selected facets,
@@ -276,11 +271,9 @@ public class FacetQueryGenerator {
 
     private String createMultiCategorySQLNoSearch(Map<String, List<Facet>> facets, String consentWhere, MapSqlParameterSource params) {
         Map<String, String> categoryKeys = createSQLSafeCategoryKeys(facets.keySet().stream().toList());
-        String consentJoins = StringUtils.hasLength(consentWhere)
-            ? """
-                LEFT JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
-                LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id"""
-            : "";
+        String consentJoins = StringUtils.hasLength(consentWhere) ? """
+            LEFT JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
+            LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id""" : "";
 
         /*
          * For each category of facet present in the filter, create a query that represents all the concept IDs associated with the selected
@@ -303,8 +296,7 @@ public class FacetQueryGenerator {
                         fcn.is_queryable = TRUE
                         AND (fc.name, facet.name) IN (:facets_in_cat_%s)
                 )
-                """
-                .formatted(categoryKeys.get(category), categoryKeys.get(category));
+                """.formatted(categoryKeys.get(category), categoryKeys.get(category));
         }).collect(Collectors.joining(",\n"));
         /*
          * Now, for each category with selected facets, take all the concepts from all other categories with selections and INTERSECT them.
@@ -374,11 +366,9 @@ public class FacetQueryGenerator {
         params.addValue("facet_category_name", facets.getFirst().category());
         params.addValue("facets", facets.stream().map(Facet::name).toList());
         params.addValue("search", search);
-        String consentJoins = StringUtils.hasLength(consentWhere)
-            ? """
-                LEFT JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
-                LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id"""
-            : "";
+        String consentJoins = StringUtils.hasLength(consentWhere) ? """
+            LEFT JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
+            LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id""" : "";
         // Part 1: facets in the matched category that are displayable + match search
         // Part 2: facets from other categories for concepts matching selected facets + search
         return """
@@ -434,18 +424,15 @@ public class FacetQueryGenerator {
                 ORDER BY
                     facet_count DESC
             )
-            """
-            .formatted(consentWhere, QueryUtility.SEARCH_WHERE, QueryUtility.SEARCH_WHERE, consentJoins, consentWhere);
+            """.formatted(consentWhere, QueryUtility.SEARCH_WHERE, QueryUtility.SEARCH_WHERE, consentJoins, consentWhere);
     }
 
     private String createSingleCategorySQLNoSearch(List<Facet> facets, String consentWhere, MapSqlParameterSource params) {
         params.addValue("facet_category_name", facets.getFirst().category());
         params.addValue("facets", facets.stream().map(Facet::name).toList());
-        String consentJoins = StringUtils.hasLength(consentWhere)
-            ? """
-                LEFT JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
-                LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id"""
-            : "";
+        String consentJoins = StringUtils.hasLength(consentWhere) ? """
+            LEFT JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
+            LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id""" : "";
         // return all the facets in the matched category that are displayable
         // UNION
         // all the facets from other categories that match concepts that match selected facets from this category
@@ -498,8 +485,7 @@ public class FacetQueryGenerator {
                 ORDER BY
                     facet_count DESC
             )
-            """
-            .formatted(consentJoins, consentWhere, consentJoins, consentWhere);
+            """.formatted(consentJoins, consentWhere, consentJoins, consentWhere);
     }
 
     private String createNoFacetSQLWithSearch(String search, String consentWhere, MapSqlParameterSource params) {
@@ -507,9 +493,7 @@ public class FacetQueryGenerator {
         // match search
         // are displayable
         params.addValue("search", search);
-        String datasetJoin = StringUtils.hasLength(consentWhere)
-            ? "LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id"
-            : "";
+        String datasetJoin = StringUtils.hasLength(consentWhere) ? "LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id" : "";
         return """
             SELECT
                 facet.facet_id, count(*) as facet_count
@@ -527,17 +511,14 @@ public class FacetQueryGenerator {
                 facet.facet_id
             ORDER BY
                 facet_count DESC
-            """
-            .formatted(datasetJoin, consentWhere, QueryUtility.SEARCH_WHERE);
+            """.formatted(datasetJoin, consentWhere, QueryUtility.SEARCH_WHERE);
 
     }
 
     private String createNoFacetSQLNoSearch(MapSqlParameterSource params, String consents) {
-        String consentJoins = StringUtils.hasLength(consents)
-            ? """
-                LEFT JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
-                LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id"""
-            : "";
+        String consentJoins = StringUtils.hasLength(consents) ? """
+            LEFT JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
+            LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id""" : "";
         String whereClause = StringUtils.hasLength(consents) ? consents.strip().replaceAll("\\s+AND\\s*$", "") : "TRUE";
         return """
             SELECT
@@ -554,7 +535,6 @@ public class FacetQueryGenerator {
                 facet.facet_id
             ORDER BY
                 facet_count DESC
-            """
-            .formatted(consentJoins, whereClause);
+            """.formatted(consentJoins, whereClause);
     }
 }

@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -34,6 +35,7 @@ import java.util.stream.Collectors;
 public class WeightUpdateCreator {
 
     private static final Logger LOG = LoggerFactory.getLogger(WeightUpdateCreator.class);
+    private static final Pattern SAFE_SQL_IDENTIFIER = Pattern.compile("^[a-zA-Z_][a-zA-Z0-9_.()' ]*$");
 
     /**
      * Builds the UPDATE statement from the given weight configuration. Each weight entry
@@ -44,7 +46,12 @@ public class WeightUpdateCreator {
     public String createUpdate(List<Weight> weights) {
         LOG.info("Turning {} weights into a setweight query", weights.size());
         String searchVector = weights.stream()
-            .map(w -> "setweight(to_tsvector('english', replace(coalesce(%s, ''), '_', ' ')), '%s')".formatted(w.key(), w.tier()))
+            .map(w -> {
+                if (!SAFE_SQL_IDENTIFIER.matcher(w.key()).matches()) {
+                    throw new IllegalArgumentException("Unsafe SQL identifier in weight key: " + w.key());
+                }
+                return "setweight(to_tsvector('english', replace(coalesce(%s, ''), '_', ' ')), '%s')".formatted(w.key(), w.tier());
+            })
             .collect(Collectors.joining(" ||\n            "));
         return """
             UPDATE concept_node

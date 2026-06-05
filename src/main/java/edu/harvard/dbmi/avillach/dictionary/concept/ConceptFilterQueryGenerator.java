@@ -96,7 +96,10 @@ public class ConceptFilterQueryGenerator {
         // For facet-only with no search and no consents, createFacetFilter already checks
         // is_queryable = TRUE, so the INTERSECT with createValuelessNodeFilter (which just adds
         // "WHERE is_queryable = TRUE AND TRUE") is redundant and prevents parallel execution.
-        if (StringUtils.hasLength(filter.search()) || !CollectionUtils.isEmpty(filter.consents()) || CollectionUtils.isEmpty(filter.facets())) {
+        if (
+            StringUtils.hasLength(filter.search()) || !CollectionUtils.isEmpty(filter.consents())
+                || CollectionUtils.isEmpty(filter.facets())
+        ) {
             clauses.add(createValuelessNodeFilter(filter.search(), filter.consents()));
         }
         String superQuery = getSuperQuery(pageable, clauses, params);
@@ -133,8 +136,7 @@ public class ConceptFilterQueryGenerator {
             WHERE
                 concept_node.is_queryable = TRUE
                 AND %s
-            """
-            .formatted(rankQuery, whereClause);
+            """.formatted(rankQuery, whereClause);
     }
 
     /**
@@ -179,9 +181,8 @@ public class ConceptFilterQueryGenerator {
     }
 
     /**
-     * Generates an optimized count query that avoids the CTE/ranking/allow_filtering overhead
-     * of {@link #generateFilterQuery}. Uses EXISTS with concept_node as the driving table,
-     * which enables parallel execution and leverages idx_fcn_concept_node_id.
+     * Generates an optimized count query that avoids the CTE/ranking/allow_filtering overhead of {@link #generateFilterQuery}. Uses EXISTS
+     * with concept_node as the driving table, which enables parallel execution and leverages idx_fcn_concept_node_id.
      */
     public QueryParamPair generateCountQuery(Filter filter) {
         MapSqlParameterSource params = new MapSqlParameterSource();
@@ -214,8 +215,7 @@ public class ConceptFilterQueryGenerator {
 
         List<String> existsClauses = grouped.entrySet().stream().map(entry -> {
             String categoryKey = entry.getKey();
-            params.addValue("facets_for_category_%s".formatted(categoryKey),
-                entry.getValue().stream().map(Facet::name).toList());
+            params.addValue("facets_for_category_%s".formatted(categoryKey), entry.getValue().stream().map(Facet::name).toList());
             params.addValue("category_%s".formatted(categoryKey), categoryKey);
             return """
                 EXISTS (
@@ -261,7 +261,7 @@ public class ConceptFilterQueryGenerator {
         String rankQuery = "0 as rank";
         String whereClause = "TRUE";
         if (StringUtils.hasLength(search)) {
-            rankQuery = "ts_rank(searchable_fields, to_tsquery(:dynamic_tsquery)) AS rank";
+            rankQuery = "ts_rank_cd(searchable_fields, to_tsquery(:dynamic_tsquery)) AS rank";
             whereClause = "concept_node.searchable_fields @@ to_tsquery(:dynamic_tsquery)";
         }
         return """
@@ -274,8 +274,7 @@ public class ConceptFilterQueryGenerator {
             WHERE
                 concept_node.is_queryable = TRUE
                 AND %s
-            """
-            .formatted(rankQuery, whereClause);
+            """.formatted(rankQuery, whereClause);
     }
 
     /**

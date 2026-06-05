@@ -52,6 +52,9 @@ public class ConceptController {
             Future<List<Concept>> conceptsFuture = executor.submit(() -> conceptService.listConcepts(filter, pagination));
             count = countFuture.get();
             concepts = conceptsFuture.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Parallel concept query interrupted", e);
         } catch (Exception e) {
             throw new RuntimeException("Parallel concept query failed", e);
         }

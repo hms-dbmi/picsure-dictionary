@@ -30,9 +30,8 @@ public class FacetService {
 
     @Cacheable("facets")
     public List<FacetCategory> getFacets(Filter filter) {
-        List<FacetCategory> facetCategories = isMultiCategory(filter)
-            ? getMultiCategoryFacetsParallel(filter)
-            : repository.getFacets(filter);
+        List<FacetCategory> facetCategories =
+            isMultiCategory(filter) ? getMultiCategoryFacetsParallel(filter) : repository.getFacets(filter);
 
         if (facetCategories.isEmpty()) {
             return facetCategories;
@@ -55,13 +54,15 @@ public class FacetService {
         // Execute count blocks in parallel using virtual threads
         Map<String, Integer> mergedCounts = new HashMap<>();
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            List<Future<Map<String, Integer>>> futures = blocks.stream()
-                .map(block -> executor.submit(() -> repository.executeCountBlock(block)))
-                .toList();
+            List<Future<Map<String, Integer>>> futures =
+                blocks.stream().map(block -> executor.submit(() -> repository.executeCountBlock(block))).toList();
 
             for (Future<Map<String, Integer>> future : futures) {
                 mergedCounts.putAll(future.get());
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Parallel facet count execution interrupted", e);
         } catch (Exception e) {
             throw new RuntimeException("Parallel facet count execution failed", e);
         }
@@ -70,22 +71,20 @@ public class FacetService {
         List<FacetCategory> metadata = repository.getFacetMetadata();
 
         // Inject counts into metadata
-        return metadata.stream().map(cat -> new FacetCategory(
-            cat,
-            cat.facets().stream().map(f -> {
-                String key = f.category() + "|" + f.name();
-                int count = mergedCounts.getOrDefault(key, 0);
-                // Rebuild facet with count, preserving children with their own counts
-                List<Facet> children = f.children() == null ? List.of() : f.children().stream().map(child -> {
-                    String childKey = child.category() + "|" + child.name();
-                    int childCount = mergedCounts.getOrDefault(childKey, 0);
-                    return new Facet(child.name(), child.display(), child.description(), child.fullName(),
-                        childCount, child.children(), child.category(), child.meta());
-                }).toList();
-                return new Facet(f.name(), f.display(), f.description(), f.fullName(),
-                    count, children, f.category(), f.meta());
-            }).sorted(Comparator.comparingInt(Facet::count).reversed()).toList()
-        )).toList();
+        return metadata.stream().map(cat -> new FacetCategory(cat, cat.facets().stream().map(f -> {
+            String key = f.category() + "|" + f.name();
+            int count = mergedCounts.getOrDefault(key, 0);
+            // Rebuild facet with count, preserving children with their own counts
+            List<Facet> children = f.children() == null ? List.of() : f.children().stream().map(child -> {
+                String childKey = child.category() + "|" + child.name();
+                int childCount = mergedCounts.getOrDefault(childKey, 0);
+                return new Facet(
+                    child.name(), child.display(), child.description(), child.fullName(), childCount, child.children(), child.category(),
+                    child.meta()
+                );
+            }).toList();
+            return new Facet(f.name(), f.display(), f.description(), f.fullName(), count, children, f.category(), f.meta());
+        }).sorted(Comparator.comparingInt(Facet::count).reversed()).toList())).toList();
     }
 
     private List<FacetCategory> applyOrdering(List<FacetCategory> facetCategories) {

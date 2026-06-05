@@ -32,7 +32,7 @@ public class WeightingParser {
             return Stream.empty();
         }
 
-        return Stream.of(new Weight(split[0], tier));
+        return Stream.of(new Weight(split[0].trim(), tier));
     }
 
 }
