@@ -2,7 +2,7 @@
 -- Replaces the expensive JOIN concept_node_meta WHERE key='values' AND value<>''
 -- that was costing 932K index lookups per facet query.
 
-ALTER TABLE concept_node ADD COLUMN is_queryable BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE concept_node ADD COLUMN IF NOT EXISTS is_queryable BOOLEAN NOT NULL DEFAULT FALSE;
 
 UPDATE concept_node cn SET is_queryable = TRUE
 WHERE EXISTS (
@@ -11,6 +11,6 @@ WHERE EXISTS (
       AND cnm.key = 'values' AND cnm.value <> ''
 );
 
-CREATE INDEX idx_concept_node_queryable
+CREATE INDEX IF NOT EXISTS idx_concept_node_queryable
     ON concept_node (concept_node_id)
     WHERE is_queryable = TRUE;
