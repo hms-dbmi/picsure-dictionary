@@ -116,8 +116,9 @@ public class FacetQueryGenerator {
          * take all the concepts from all other categories with selections and INTERSECT them. This creates the concepts for this category
          */
         String selectedFacetsQuery = facets.keySet().stream().map(category -> {
-            String allConceptsForCategory = categoryKeys.values().stream().filter(key -> !categoryKeys.get(category).equals(key))
-                .map(key -> "SELECT * FROM facet_category_" + key + "_concepts").collect(Collectors.joining(" INTERSECT "));
+            String existsChain = categoryKeys.values().stream().filter(key -> !categoryKeys.get(category).equals(key))
+                .map(key -> "EXISTS (SELECT 1 FROM facet_category_" + key + "_concepts c WHERE c.concept_node_id = fcn.concept_node_id)")
+                .collect(Collectors.joining("\n                    AND "));
             params.addValue("", "");
             return """
                 (
@@ -131,22 +132,23 @@ public class FacetQueryGenerator {
                         LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id
                     WHERE
                         %s
-                        fcn.concept_node_id IN (%s) AND
-                        fc.name = :facet_category_%s
+                        %s
+                        AND fc.name = :facet_category_%s
                     GROUP BY
                         facet.facet_id
                     ORDER BY
                         facet_count DESC
                 )
-                """.formatted(consentWhere, allConceptsForCategory, categoryKeys.get(category));
+                """.formatted(consentWhere, existsChain, categoryKeys.get(category));
         }).collect(Collectors.joining("\n\tUNION\n"));
 
         /*
          * For categories with no selected facets, take all the concepts from all facets, and use them for the counts
          */
         params.addValue("all_selected_facet_categories", facets.keySet());
-        String allConceptsForUnselectedCategories = categoryKeys.values().stream()
-            .map(key -> "SELECT * FROM facet_category_" + key + "_concepts").collect(Collectors.joining(" INTERSECT "));
+        String existsChainAll = categoryKeys.values().stream()
+            .map(key -> "EXISTS (SELECT 1 FROM facet_category_" + key + "_concepts c WHERE c.concept_node_id = fcn.concept_node_id)")
+            .collect(Collectors.joining("\n                    AND "));
         String unselectedFacetsQuery = """
             UNION
             (
@@ -161,13 +163,13 @@ public class FacetQueryGenerator {
                 WHERE
                     %s
                     fc.name NOT IN (:all_selected_facet_categories)
-                    AND fcn.concept_node_id IN (%s)
+                    AND %s
                 GROUP BY
                     facet.facet_id
                 ORDER BY
                     facet_count DESC
             )
-            """.formatted(consentWhere, allConceptsForUnselectedCategories);
+            """.formatted(consentWhere, existsChainAll);
 
         return conceptsQuery + selectedFacetsQuery + unselectedFacetsQuery;
     }
@@ -206,8 +208,9 @@ public class FacetQueryGenerator {
          */
         String selectedFacetsQuery = facets.keySet().stream().map(category -> {
             params.addValue("facet_category_" + categoryKeys.get(category), category);
-            String allConceptsForCategory = categoryKeys.values().stream().filter(key -> !categoryKeys.get(category).equals(key))
-                .map(key -> "SELECT * FROM facet_category_" + key + "_concepts").collect(Collectors.joining(" INTERSECT "));
+            String existsChain = categoryKeys.values().stream().filter(key -> !categoryKeys.get(category).equals(key))
+                .map(key -> "EXISTS (SELECT 1 FROM facet_category_" + key + "_concepts c WHERE c.concept_node_id = fcn.concept_node_id)")
+                .collect(Collectors.joining("\n                    AND "));
             params.addValue("", "");
             return """
                 (
@@ -221,22 +224,23 @@ public class FacetQueryGenerator {
                         LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id
                     WHERE
                         %s
-                        fcn.concept_node_id IN (%s)
+                        %s
                         AND fc.name = :facet_category_%s
                     GROUP BY
                         facet.facet_id
                     ORDER BY
                         facet_count DESC
                 )
-                """.formatted(consentWhere, allConceptsForCategory, categoryKeys.get(category));
+                """.formatted(consentWhere, existsChain, categoryKeys.get(category));
         }).collect(Collectors.joining("\n\tUNION\n"));
 
         /*
          * For categories with no selected facets, take all the concepts from all facets, and use them for the counts
          */
         params.addValue("all_selected_facet_categories", facets.keySet());
-        String allConceptsForUnselectedCategories = categoryKeys.values().stream()
-            .map(key -> "SELECT * FROM facet_category_" + key + "_concepts").collect(Collectors.joining(" INTERSECT "));
+        String existsChainAll = categoryKeys.values().stream()
+            .map(key -> "EXISTS (SELECT 1 FROM facet_category_" + key + "_concepts c WHERE c.concept_node_id = fcn.concept_node_id)")
+            .collect(Collectors.joining("\n                    AND "));
         String unselectedFacetsQuery = """
             UNION
             (
@@ -251,13 +255,13 @@ public class FacetQueryGenerator {
                 WHERE
                     %s
                     fc.name NOT IN (:all_selected_facet_categories)
-                    AND fcn.concept_node_id IN (%s)
+                    AND %s
                 GROUP BY
                     facet.facet_id
                 ORDER BY
                     facet_count DESC
             )
-            """.formatted(consentWhere, allConceptsForUnselectedCategories);
+            """.formatted(consentWhere, existsChainAll);
 
         return conceptsQuery + selectedFacetsQuery + unselectedFacetsQuery;
     }
