@@ -7,6 +7,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import edu.harvard.dbmi.avillach.dictionary.filter.QueryParamPair;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +72,98 @@ public class FacetQueryGenerator {
                 return createMultiCategorySQLNoSearch(groupedFacets, consentWhere, params);
             }
         }
+    }
+
+    /**
+     * Returns independent count queries for multi-category facet requests, one per UNION block.
+     * Each query includes the shared CTEs and can be executed in parallel.
+     * Returns (facet_name, category_name, facet_count) rows for merging in Java.
+     */
+    public List<QueryParamPair> createMultiCategoryCountBlocks(Filter filter) {
+        Map<String, List<Facet>> groupedFacets =
+            (filter.facets() == null ? Stream.<Facet>of() : filter.facets().stream()).collect(Collectors.groupingBy(Facet::category));
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        String consentWhere = "";
+        String consentJoins = "";
+        if (!CollectionUtils.isEmpty(filter.consents())) {
+            params.addValue("consents", filter.consents());
+            consentWhere = CONSENT_QUERY;
+            consentJoins = """
+                LEFT JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
+                LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id""";
+        }
+
+        Map<String, String> categoryKeys = createSQLSafeCategoryKeys(groupedFacets.keySet().stream().toList());
+        boolean hasSearch = StringUtils.hasLength(filter.search());
+        if (hasSearch) {
+            params.addValue("search", filter.search());
+        }
+
+        // Build shared CTEs (same as existing multi-category methods)
+        String conceptsQuery = groupedFacets.keySet().stream().map(category -> {
+            List<String[]> selectedFacetsInCategory = groupedFacets.entrySet().stream().filter(e -> category.equals(e.getKey()))
+                .flatMap(e -> e.getValue().stream()).map(facet -> new String[] {facet.category(), facet.name()}).toList();
+            params.addValue("facets_in_cat_" + categoryKeys.get(category), selectedFacetsInCategory);
+            params.addValue("facet_category_" + categoryKeys.get(category), category);
+            String searchJoin = hasSearch ? "JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id" : "";
+            String searchWhere = hasSearch ? "AND " + QueryUtility.SEARCH_WHERE : "";
+            return """
+                facet_category_%s_concepts AS (
+                    SELECT DISTINCT(fcn.concept_node_id) as concept_node_id
+                    FROM facet
+                        JOIN facet__concept_node fcn ON fcn.facet_id = facet.facet_id
+                        JOIN facet_category fc on fc.facet_category_id = facet.facet_category_id
+                        %s
+                    WHERE fcn.is_queryable = TRUE
+                        AND (fc.name, facet.name) IN (:facets_in_cat_%s)
+                        %s
+                )""".formatted(categoryKeys.get(category), searchJoin, categoryKeys.get(category), searchWhere);
+        }).collect(Collectors.joining(",\n"));
+        String ctePrefix = "WITH " + conceptsQuery + "\n";
+
+        List<QueryParamPair> blocks = new ArrayList<>();
+
+        // One block per selected category: filtered by OTHER categories' concepts
+        for (String category : groupedFacets.keySet()) {
+            String existsChain = categoryKeys.values().stream()
+                .filter(key -> !categoryKeys.get(category).equals(key))
+                .map(key -> "EXISTS (SELECT 1 FROM facet_category_" + key + "_concepts c WHERE c.concept_node_id = fcn.concept_node_id)")
+                .collect(Collectors.joining("\n                AND "));
+            String block = ctePrefix + """
+                SELECT facet.name AS facet_name, fc.name AS category_name, count(*) AS facet_count
+                FROM facet
+                    JOIN facet__concept_node fcn ON fcn.facet_id = facet.facet_id
+                    JOIN facet_category fc ON fc.facet_category_id = facet.facet_category_id
+                    %s
+                WHERE fcn.is_queryable = TRUE
+                    AND %s
+                    %s
+                    AND fc.name = :facet_category_%s
+                GROUP BY facet.name, fc.name
+                """.formatted(consentJoins, consentWhere, existsChain, categoryKeys.get(category));
+            blocks.add(new QueryParamPair(block, params));
+        }
+
+        // One block for unselected categories: filtered by ALL categories' concepts
+        params.addValue("all_selected_facet_categories", groupedFacets.keySet());
+        String existsChainAll = categoryKeys.values().stream()
+            .map(key -> "EXISTS (SELECT 1 FROM facet_category_" + key + "_concepts c WHERE c.concept_node_id = fcn.concept_node_id)")
+            .collect(Collectors.joining("\n                AND "));
+        String unselectedBlock = ctePrefix + """
+            SELECT facet.name AS facet_name, fc.name AS category_name, count(*) AS facet_count
+            FROM facet
+                JOIN facet_category fc ON fc.facet_category_id = facet.facet_category_id
+                JOIN facet__concept_node fcn ON fcn.facet_id = facet.facet_id
+                %s
+            WHERE fcn.is_queryable = TRUE
+                AND %s
+                fc.name NOT IN (:all_selected_facet_categories)
+                AND %s
+            GROUP BY facet.name, fc.name
+            """.formatted(consentJoins, consentWhere, existsChainAll);
+        blocks.add(new QueryParamPair(unselectedBlock, params));
+
+        return blocks;
     }
 
     private Map<String, String> createSQLSafeCategoryKeys(List<String> categories) {
