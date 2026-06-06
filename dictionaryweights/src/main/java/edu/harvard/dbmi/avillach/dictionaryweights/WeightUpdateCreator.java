@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 public class WeightUpdateCreator {
 
     private static final Logger LOG = LoggerFactory.getLogger(WeightUpdateCreator.class);
-    private static final Pattern SAFE_SQL_IDENTIFIER = Pattern.compile("^[a-zA-Z_][a-zA-Z0-9_.()' ]*$");
+    private static final Pattern SAFE_SQL_IDENTIFIER = Pattern.compile("^[a-zA-Z_][a-zA-Z0-9_.]*$");
 
     /**
      * Builds the UPDATE statement from the given weight configuration. Each weight entry
