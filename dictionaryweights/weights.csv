@@ -4,4 +4,4 @@ dataset.FULL_NAME,B
 dataset.DESCRIPTION,B
 parent.DISPLAY,C
 grandparent.DISPLAY,C
-concept_node_meta_str,D
+concept_node_meta_str.values,D
