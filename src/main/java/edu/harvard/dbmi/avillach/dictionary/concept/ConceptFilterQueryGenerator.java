@@ -4,6 +4,7 @@ import edu.harvard.dbmi.avillach.dictionary.facet.Facet;
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
 import edu.harvard.dbmi.avillach.dictionary.filter.QueryParamPair;
 import edu.harvard.dbmi.avillach.dictionary.util.QueryUtility;
+import edu.harvard.dbmi.avillach.dictionary.util.SchemaDetector;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +24,7 @@ import java.util.stream.Stream;
 @Component
 public class ConceptFilterQueryGenerator {
     private final List<String> disallowedMetaFields;
+    private final SchemaDetector schemaDetector;
 
     /**
      * CTE fragment that computes a rank adjustment multiplier per concept. Concepts flagged with disallowed meta keys (e.g.
@@ -66,8 +68,11 @@ public class ConceptFilterQueryGenerator {
         """;
 
     @Autowired
-    public ConceptFilterQueryGenerator(@Value("${filtering.unfilterable_concepts}") List<String> disallowedMetaFields) {
+    public ConceptFilterQueryGenerator(
+        @Value("${filtering.unfilterable_concepts}") List<String> disallowedMetaFields, SchemaDetector schemaDetector
+    ) {
         this.disallowedMetaFields = disallowedMetaFields;
+        this.schemaDetector = schemaDetector;
     }
 
     /**
@@ -134,9 +139,9 @@ public class ConceptFilterQueryGenerator {
                 concept_node
                 LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id
             WHERE
-                concept_node.is_queryable = TRUE
+                %s
                 AND %s
-            """.formatted(rankQuery, whereClause);
+            """.formatted(rankQuery, schemaDetector.conceptNodeQueryableClause("concept_node"), whereClause);
     }
 
     /**
@@ -169,14 +174,17 @@ public class ConceptFilterQueryGenerator {
                         JOIN concept_node ON concept_node.concept_node_id = facet__concept_node.concept_node_id
                         LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id
                     WHERE
-                        concept_node.is_queryable = TRUE
+                        %s
                         AND %s
                         %s
                         facet.name IN (:facets_for_category_%s ) AND facet_category.name = :category_%s
                     GROUP BY
                         facet__concept_node.concept_node_id
                 )
-                """.formatted(rankQuery, rankWhere, consentWhere, facetsForCategory.getKey(), facetsForCategory.getKey());
+                """.formatted(
+                rankQuery, schemaDetector.conceptNodeQueryableClause("concept_node"), rankWhere, consentWhere, facetsForCategory.getKey(),
+                facetsForCategory.getKey()
+            );
         }).toList();
     }
 
@@ -203,10 +211,10 @@ public class ConceptFilterQueryGenerator {
                 SELECT count(*)
                 FROM concept_node
                 LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id
-                WHERE concept_node.is_queryable = TRUE
+                WHERE %s
                 %s
                 %s
-                """.formatted(searchCondition, consentCondition);
+                """.formatted(schemaDetector.conceptNodeQueryableClause("concept_node"), searchCondition, consentCondition);
             return new QueryParamPair(sql, params);
         }
 
@@ -236,11 +244,13 @@ public class ConceptFilterQueryGenerator {
             SELECT count(*)
             FROM concept_node cn
             LEFT JOIN dataset ON cn.dataset_id = dataset.dataset_id
-            WHERE cn.is_queryable = TRUE
+            WHERE %s
             AND %s
             %s
             %s
-            """.formatted(existsWhere, searchCondition.replace("concept_node.", "cn."), consentCondition);
+            """.formatted(
+            schemaDetector.conceptNodeQueryableClause("cn"), existsWhere, searchCondition.replace("concept_node.", "cn."), consentCondition
+        );
         return new QueryParamPair(sql, params);
     }
 
@@ -272,9 +282,9 @@ public class ConceptFilterQueryGenerator {
                 concept_node
                 LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id
             WHERE
-                concept_node.is_queryable = TRUE
+                %s
                 AND %s
-            """.formatted(rankQuery, whereClause);
+            """.formatted(rankQuery, schemaDetector.conceptNodeQueryableClause("concept_node"), whereClause);
     }
 
     /**

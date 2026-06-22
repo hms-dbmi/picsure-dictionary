@@ -1,13 +1,14 @@
 package edu.harvard.dbmi.avillach.dictionary.facet;
 
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
+import edu.harvard.dbmi.avillach.dictionary.filter.QueryParamPair;
 import edu.harvard.dbmi.avillach.dictionary.util.QueryUtility;
+import edu.harvard.dbmi.avillach.dictionary.util.SchemaDetector;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
-
-import edu.harvard.dbmi.avillach.dictionary.filter.QueryParamPair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,6 +24,8 @@ import java.util.stream.Stream;
  */
 @Component
 public class FacetQueryGenerator {
+
+    private final String fcnQueryable;
 
     private static final String CONSENT_QUERY = """
         dataset.dataset_id IN (
@@ -44,6 +47,11 @@ public class FacetQueryGenerator {
                 (dataset.ref IN (:consents) AND consent.consent_code = '')
         ) AND
         """;
+
+    @Autowired
+    public FacetQueryGenerator(SchemaDetector schemaDetector) {
+        this.fcnQueryable = schemaDetector.fcnQueryableClause("fcn");
+    }
 
     public String createFacetSQLAndPopulateParams(Filter filter, MapSqlParameterSource params) {
         Map<String, List<Facet>> groupedFacets =
@@ -113,10 +121,10 @@ public class FacetQueryGenerator {
                         JOIN facet__concept_node fcn ON fcn.facet_id = facet.facet_id
                         JOIN facet_category fc on fc.facet_category_id = facet.facet_category_id
                         %s
-                    WHERE fcn.is_queryable = TRUE
+                    WHERE %s
                         AND (fc.name, facet.name) IN (:facets_in_cat_%s)
                         %s
-                )""".formatted(categoryKeys.get(category), searchJoin, categoryKeys.get(category), searchWhere);
+                )""".formatted(categoryKeys.get(category), searchJoin, fcnQueryable, categoryKeys.get(category), searchWhere);
         }).collect(Collectors.joining(",\n"));
         String ctePrefix = "WITH " + conceptsQuery + "\n";
 
@@ -133,12 +141,12 @@ public class FacetQueryGenerator {
                     JOIN facet__concept_node fcn ON fcn.facet_id = facet.facet_id
                     JOIN facet_category fc ON fc.facet_category_id = facet.facet_category_id
                     %s
-                WHERE fcn.is_queryable = TRUE
+                WHERE %s
                     AND %s
                     %s
                     AND fc.name = :facet_category_%s
                 GROUP BY facet.name, fc.name
-                """.formatted(consentJoins, consentWhere, existsChain, categoryKeys.get(category));
+                """.formatted(consentJoins, fcnQueryable, consentWhere, existsChain, categoryKeys.get(category));
             blocks.add(new QueryParamPair(block, params));
         }
 
@@ -153,12 +161,12 @@ public class FacetQueryGenerator {
                 JOIN facet_category fc ON fc.facet_category_id = facet.facet_category_id
                 JOIN facet__concept_node fcn ON fcn.facet_id = facet.facet_id
                 %s
-            WHERE fcn.is_queryable = TRUE
+            WHERE %s
                 AND %s
                 fc.name NOT IN (:all_selected_facet_categories)
                 AND %s
             GROUP BY facet.name, fc.name
-            """.formatted(consentJoins, consentWhere, existsChainAll);
+            """.formatted(consentJoins, fcnQueryable, consentWhere, existsChainAll);
         blocks.add(new QueryParamPair(unselectedBlock, params));
 
         return blocks;
@@ -200,11 +208,11 @@ public class FacetQueryGenerator {
                         JOIN facet_category fc on fc.facet_category_id = facet.facet_category_id
                         JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
                     WHERE
-                        fcn.is_queryable = TRUE
+                        %s
                         AND (fc.name, facet.name) IN (:facets_in_cat_%s)
                         AND %s
                 )
-                """.formatted(categoryKeys.get(category), categoryKeys.get(category), QueryUtility.SEARCH_WHERE);
+                """.formatted(fcnQueryable, categoryKeys.get(category), QueryUtility.SEARCH_WHERE);
         }).collect(Collectors.joining(",\n"));
         /*
          * Categories with no selected facets contribute no concepts, so ignore them for now. Now, for each category with selected facets,
@@ -225,7 +233,7 @@ public class FacetQueryGenerator {
                         JOIN facet__concept_node fcn ON fcn.facet_id = facet.facet_id
                         %s
                     WHERE
-                        fcn.is_queryable = TRUE
+                        %s
                         AND %s
                         %s
                         AND fc.name = :facet_category_%s
@@ -234,7 +242,7 @@ public class FacetQueryGenerator {
                     ORDER BY
                         facet_count DESC
                 )
-                """.formatted(consentJoins, consentWhere, existsChain, categoryKeys.get(category));
+                """.formatted(consentJoins, fcnQueryable, consentWhere, existsChain, categoryKeys.get(category));
         }).collect(Collectors.joining("\n\tUNION\n"));
 
         /*
@@ -255,7 +263,7 @@ public class FacetQueryGenerator {
                     JOIN facet__concept_node fcn ON fcn.facet_id = facet.facet_id
                     %s
                 WHERE
-                    fcn.is_queryable = TRUE
+                    %s
                     AND %s
                     fc.name NOT IN (:all_selected_facet_categories)
                     AND %s
@@ -264,7 +272,7 @@ public class FacetQueryGenerator {
                 ORDER BY
                     facet_count DESC
             )
-            """.formatted(consentJoins, consentWhere, existsChainAll);
+            """.formatted(consentJoins, fcnQueryable, consentWhere, existsChainAll);
 
         return conceptsQuery + selectedFacetsQuery + unselectedFacetsQuery;
     }
@@ -293,10 +301,10 @@ public class FacetQueryGenerator {
                         JOIN facet__concept_node fcn ON fcn.facet_id = facet.facet_id
                         JOIN facet_category fc on fc.facet_category_id = facet.facet_category_id
                     WHERE
-                        fcn.is_queryable = TRUE
+                        %s
                         AND (fc.name, facet.name) IN (:facets_in_cat_%s)
                 )
-                """.formatted(categoryKeys.get(category), categoryKeys.get(category));
+                """.formatted(categoryKeys.get(category), fcnQueryable, categoryKeys.get(category));
         }).collect(Collectors.joining(",\n"));
         /*
          * Now, for each category with selected facets, take all the concepts from all other categories with selections and INTERSECT them.
@@ -318,7 +326,7 @@ public class FacetQueryGenerator {
                         JOIN facet_category fc on fc.facet_category_id = facet.facet_category_id
                         %s
                     WHERE
-                        fcn.is_queryable = TRUE
+                        %s
                         AND %s
                         %s
                         AND fc.name = :facet_category_%s
@@ -327,7 +335,7 @@ public class FacetQueryGenerator {
                     ORDER BY
                         facet_count DESC
                 )
-                """.formatted(consentJoins, consentWhere, existsChain, categoryKeys.get(category));
+                """.formatted(consentJoins, fcnQueryable, consentWhere, existsChain, categoryKeys.get(category));
         }).collect(Collectors.joining("\n\tUNION\n"));
 
         /*
@@ -348,7 +356,7 @@ public class FacetQueryGenerator {
                     JOIN facet__concept_node fcn ON fcn.facet_id = facet.facet_id
                     %s
                 WHERE
-                    fcn.is_queryable = TRUE
+                    %s
                     AND %s
                     fc.name NOT IN (:all_selected_facet_categories)
                     AND %s
@@ -357,7 +365,7 @@ public class FacetQueryGenerator {
                 ORDER BY
                     facet_count DESC
             )
-            """.formatted(consentJoins, consentWhere, existsChainAll);
+            """.formatted(consentJoins, fcnQueryable, consentWhere, existsChainAll);
 
         return conceptsQuery + selectedFacetsQuery + unselectedFacetsQuery;
     }
@@ -382,7 +390,7 @@ public class FacetQueryGenerator {
                     JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
                     LEFT JOIN dataset ON concept_node.dataset_id = dataset.dataset_id
                 WHERE
-                    fcn.is_queryable = TRUE
+                    %s
                     AND %s
                     fc.name = :facet_category_name
                     AND %s
@@ -402,7 +410,7 @@ public class FacetQueryGenerator {
                         JOIN facet_category fc on fc.facet_category_id = facet.facet_category_id
                         JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
                     WHERE
-                        fcn.is_queryable = TRUE
+                        %s
                         AND fc.name = :facet_category_name
                         AND facet.name IN (:facets)
                         AND %s
@@ -416,7 +424,7 @@ public class FacetQueryGenerator {
                     %s
                     JOIN matching_concepts ON fcn.concept_node_id = matching_concepts.concept_node_id
                 WHERE
-                    fcn.is_queryable = TRUE
+                    %s
                     AND %s
                     fc.name <> :facet_category_name
                 GROUP BY
@@ -424,7 +432,10 @@ public class FacetQueryGenerator {
                 ORDER BY
                     facet_count DESC
             )
-            """.formatted(consentWhere, QueryUtility.SEARCH_WHERE, QueryUtility.SEARCH_WHERE, consentJoins, consentWhere);
+            """.formatted(
+            fcnQueryable, consentWhere, QueryUtility.SEARCH_WHERE, fcnQueryable, QueryUtility.SEARCH_WHERE, consentJoins, fcnQueryable,
+            consentWhere
+        );
     }
 
     private String createSingleCategorySQLNoSearch(List<Facet> facets, String consentWhere, MapSqlParameterSource params) {
@@ -446,7 +457,7 @@ public class FacetQueryGenerator {
                     JOIN facet_category fc on fc.facet_category_id = facet.facet_category_id
                     %s
                 WHERE
-                    fcn.is_queryable = TRUE
+                    %s
                     AND %s
                     fc.name = :facet_category_name
                 GROUP BY
@@ -464,7 +475,7 @@ public class FacetQueryGenerator {
                         JOIN facet__concept_node fcn ON fcn.facet_id = facet.facet_id
                         JOIN facet_category fc on fc.facet_category_id = facet.facet_category_id
                     WHERE
-                        fcn.is_queryable = TRUE
+                        %s
                         AND fc.name = :facet_category_name
                         AND facet.name IN (:facets)
                 )
@@ -477,7 +488,7 @@ public class FacetQueryGenerator {
                     %s
                     JOIN matching_concepts ON fcn.concept_node_id = matching_concepts.concept_node_id
                 WHERE
-                    fcn.is_queryable = TRUE
+                    %s
                     AND %s
                     fc.name <> :facet_category_name
                 GROUP BY
@@ -485,7 +496,7 @@ public class FacetQueryGenerator {
                 ORDER BY
                     facet_count DESC
             )
-            """.formatted(consentJoins, consentWhere, consentJoins, consentWhere);
+            """.formatted(consentJoins, fcnQueryable, consentWhere, fcnQueryable, consentJoins, fcnQueryable, consentWhere);
     }
 
     private String createNoFacetSQLWithSearch(String search, String consentWhere, MapSqlParameterSource params) {
@@ -504,14 +515,14 @@ public class FacetQueryGenerator {
                 JOIN concept_node ON concept_node.concept_node_id = fcn.concept_node_id
                 %s
             WHERE
-                fcn.is_queryable = TRUE
+                %s
                 AND %s
                 %s
             GROUP BY
                 facet.facet_id
             ORDER BY
                 facet_count DESC
-            """.formatted(datasetJoin, consentWhere, QueryUtility.SEARCH_WHERE);
+            """.formatted(datasetJoin, fcnQueryable, consentWhere, QueryUtility.SEARCH_WHERE);
 
     }
 
@@ -529,12 +540,12 @@ public class FacetQueryGenerator {
                 JOIN facet_category fc on fc.facet_category_id = facet.facet_category_id
                 %s
             WHERE
-                fcn.is_queryable = TRUE
+                %s
                 AND %s
             GROUP BY
                 facet.facet_id
             ORDER BY
                 facet_count DESC
-            """.formatted(consentJoins, whereClause);
+            """.formatted(consentJoins, fcnQueryable, whereClause);
     }
 }
