@@ -212,7 +212,7 @@ public class FacetQueryGenerator {
                         AND (fc.name, facet.name) IN (:facets_in_cat_%s)
                         AND %s
                 )
-                """.formatted(fcnQueryable, categoryKeys.get(category), QueryUtility.SEARCH_WHERE);
+                """.formatted(categoryKeys.get(category), fcnQueryable, categoryKeys.get(category), QueryUtility.SEARCH_WHERE);
         }).collect(Collectors.joining(",\n"));
         /*
          * Categories with no selected facets contribute no concepts, so ignore them for now. Now, for each category with selected facets,
