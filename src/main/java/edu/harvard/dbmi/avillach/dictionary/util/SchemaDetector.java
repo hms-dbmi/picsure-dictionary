@@ -6,13 +6,22 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.Objects;
+
 @Component
 public class SchemaDetector {
 
     private static final Logger LOG = LoggerFactory.getLogger(SchemaDetector.class);
 
-    private static final String CHECK_COLUMN_SQL =
-        "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ? AND column_name = 'is_queryable')";
+    private static final String CHECK_COLUMN_SQL = """
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = current_schema()
+              AND table_name = ?
+              AND column_name = 'is_queryable'
+        )
+        """;
 
     private final boolean conceptNodeQueryable;
     private final boolean fcnQueryable;
@@ -22,8 +31,8 @@ public class SchemaDetector {
         boolean cnQueryable = false;
         boolean fcnQ = false;
         try {
-            cnQueryable = Boolean.TRUE.equals(jdbcTemplate.queryForObject(CHECK_COLUMN_SQL, Boolean.class, "concept_node"));
-            fcnQ = Boolean.TRUE.equals(jdbcTemplate.queryForObject(CHECK_COLUMN_SQL, Boolean.class, "facet__concept_node"));
+            cnQueryable = Objects.requireNonNullElse(jdbcTemplate.queryForObject(CHECK_COLUMN_SQL, Boolean.class, "concept_node"), false);
+            fcnQ = Objects.requireNonNullElse(jdbcTemplate.queryForObject(CHECK_COLUMN_SQL, Boolean.class, "facet__concept_node"), false);
         } catch (Exception e) {
             LOG.warn("Schema detection failed ({}), defaulting to legacy query paths", e.getMessage());
         }
@@ -33,19 +42,6 @@ public class SchemaDetector {
             "Schema detection: concept_node.is_queryable {} | facet__concept_node.is_queryable {}",
             conceptNodeQueryable ? "found" : "NOT FOUND — legacy fallback", fcnQueryable ? "found" : "NOT FOUND — legacy fallback"
         );
-    }
-
-    /** For backward compatibility. */
-    public boolean hasQueryableColumn() {
-        return conceptNodeQueryable;
-    }
-
-    public boolean hasConceptNodeQueryable() {
-        return conceptNodeQueryable;
-    }
-
-    public boolean hasFcnQueryable() {
-        return fcnQueryable;
     }
 
     /**
