@@ -3,9 +3,7 @@
 -- Maintained by two triggers:
 --   1. trg_set_fcn_is_queryable: sets value on INSERT/UPDATE from concept_node
 --   2. trg_cascade_is_queryable_to_fcn: cascades concept_node.is_queryable changes
---
--- Uses unqualified table names so search_path resolves correctly in both
--- production (currentSchema=dict) and test (public schema) environments.
+
 
 ALTER TABLE facet__concept_node
     ADD COLUMN IF NOT EXISTS is_queryable BOOLEAN NOT NULL DEFAULT FALSE;

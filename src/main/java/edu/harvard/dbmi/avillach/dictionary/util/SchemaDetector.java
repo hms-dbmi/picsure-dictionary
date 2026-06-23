@@ -3,12 +3,14 @@ package edu.harvard.dbmi.avillach.dictionary.util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitialization;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.Objects;
 
 @Component
+@DependsOnDatabaseInitialization
 public class SchemaDetector {
 
     private static final Logger LOG = LoggerFactory.getLogger(SchemaDetector.class);
