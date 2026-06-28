@@ -11,7 +11,7 @@ ALTER TABLE dict.facet__concept_node
 -- Backfill from concept_node.is_queryable (populated by V7)
 UPDATE dict.facet__concept_node fcn
 SET is_queryable = cn.is_queryable
-FROM concept_node cn
+FROM dict.concept_node cn
 WHERE cn.concept_node_id = fcn.concept_node_id;
 
 -- Trigger 1: set is_queryable on fcn INSERT/UPDATE (covers ETL reload)
