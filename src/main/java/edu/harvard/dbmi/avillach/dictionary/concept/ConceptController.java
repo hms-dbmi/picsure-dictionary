@@ -67,7 +67,7 @@ public class ConceptController {
         AuditAttributes.putMetadata(httpRequest, "result_count", String.valueOf(count));
         AuditAttributes.putMetadata(
             httpRequest, "search_facets",
-            filter.facets() != null ? filter.facets().stream().map(Facet::fullName).collect(Collectors.joining(",")) : ""
+            filter.facets() != null ? filter.facets().stream().map(Facet::name).collect(Collectors.joining(",")) : ""
         );
 
         return ResponseEntity.ok(pageResp);
