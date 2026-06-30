@@ -32,7 +32,7 @@ class AuditLoggingFilterTest {
 
         LoggingEvent event = runFilterWith(request);
 
-        assertEquals("PYTHON_ADAPTER", event.getMetadata().get("caller"));
+        assertEquals("PYTHON_ADAPTER", event.getCaller());
     }
 
     @Test
@@ -41,6 +41,6 @@ class AuditLoggingFilterTest {
 
         LoggingEvent event = runFilterWith(request);
 
-        assertFalse(event.getMetadata().containsKey("caller"));
+        assertNull(event.getCaller());
     }
 }
