@@ -2,6 +2,7 @@ package edu.harvard.dbmi.avillach.dictionary.concept;
 
 import edu.harvard.dbmi.avillach.dictionary.AuditAttributes;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.Concept;
+import edu.harvard.dbmi.avillach.dictionary.facet.Facet;
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
 import edu.harvard.dbmi.avillach.logging.AuditEvent;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,7 +15,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -63,9 +66,23 @@ public class ConceptController {
 
         AuditAttributes.putMetadata(httpRequest, "search_term", filter.search() != null ? filter.search() : "");
         AuditAttributes.putMetadata(httpRequest, "result_count", String.valueOf(count));
-        AuditAttributes.putMetadata(httpRequest, "search_facets", filter.facets() != null ? filter.facets() : List.of());
+        AuditAttributes.putMetadata(httpRequest, "search_facets", reduceFacets(filter.facets()));
 
         return ResponseEntity.ok(pageResp);
+    }
+
+    // Reduce applied facets to {category, name} for the audit log — the full
+    // facet objects carry display/description/count/null fields that add noise.
+    private static List<Map<String, Object>> reduceFacets(List<Facet> facets) {
+        if (facets == null) {
+            return List.of();
+        }
+        return facets.stream().map(facet -> {
+            Map<String, Object> reduced = new LinkedHashMap<>();
+            reduced.put("category", facet.category());
+            reduced.put("name", facet.name());
+            return reduced;
+        }).toList();
     }
 
     @AuditEvent(type = "DATA_ACCESS", action = "concept.dump")

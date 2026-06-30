@@ -61,19 +61,25 @@ class ConceptControllerTest {
     }
 
     @Test
-    void shouldRecordSearchFacetsAsFacetObjects() {
+    void shouldRecordSearchFacetsAsReducedCategoryNameObjects() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
-        Facet facet = new Facet("phs000007", "Framingham", "desc", "phs000007", 3, null, "study_ids", null);
-        Filter filter = new Filter(List.of(facet), "heart", List.of());
+        Facet continuous = new Facet("continuous", "Continuous", "desc", "continuous", 3, null, "data_type", null);
+        Facet framingham = new Facet("tutorial-biolincc_framingham", "Framingham", "desc", null, 1, null, "dataset_id", null);
+        Filter filter = new Filter(List.of(continuous, framingham), "heart", List.of());
         Mockito.when(conceptService.listConcepts(filter, Pageable.ofSize(10).withPage(0))).thenReturn(List.of());
         Mockito.when(conceptService.countConcepts(filter)).thenReturn(0L);
 
         subject.listConcepts(filter, 0, 10);
 
         Object searchFacets = AuditAttributes.getMetadata(request).get("search_facets");
-        Assertions.assertEquals(List.of(facet), searchFacets);
+        Assertions.assertEquals(
+            List.of(
+                Map.of("category", "data_type", "name", "continuous"),
+                Map.of("category", "dataset_id", "name", "tutorial-biolincc_framingham")
+            ), searchFacets
+        );
     }
 
     @Test
