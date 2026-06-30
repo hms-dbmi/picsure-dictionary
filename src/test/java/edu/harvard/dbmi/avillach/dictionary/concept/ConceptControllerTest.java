@@ -5,6 +5,7 @@ import edu.harvard.dbmi.avillach.dictionary.concept.model.CategoricalConcept;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.Concept;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.ContinuousConcept;
 import edu.harvard.dbmi.avillach.dictionary.facet.Facet;
+import edu.harvard.dbmi.avillach.dictionary.facet.FacetService;
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +33,9 @@ class ConceptControllerTest {
 
     @MockBean
     ConceptService conceptService;
+
+    @MockBean
+    FacetService facetService;
 
     @Autowired
     ConceptController subject;
@@ -61,25 +65,20 @@ class ConceptControllerTest {
     }
 
     @Test
-    void shouldRecordSearchFacetsAsReducedCategoryNameObjects() {
+    void shouldRecordSearchFacetsFromFacetService() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
-        Facet continuous = new Facet("continuous", "Continuous", "desc", "continuous", 3, null, "data_type", null);
-        Facet framingham = new Facet("tutorial-biolincc_framingham", "Framingham", "desc", null, 1, null, "dataset_id", null);
-        Filter filter = new Filter(List.of(continuous, framingham), "heart", List.of());
+        Facet facet = new Facet("continuous", "Continuous", "desc", "continuous", 3, null, "data_type", null);
+        Filter filter = new Filter(List.of(facet), "heart", List.of());
+        List<Map<String, Object>> reduced = List.of(Map.of("category", "data_type", "name", "continuous"));
         Mockito.when(conceptService.listConcepts(filter, Pageable.ofSize(10).withPage(0))).thenReturn(List.of());
         Mockito.when(conceptService.countConcepts(filter)).thenReturn(0L);
+        Mockito.when(facetService.reduceFacets(filter.facets())).thenReturn(reduced);
 
         subject.listConcepts(filter, 0, 10);
 
-        Object searchFacets = AuditAttributes.getMetadata(request).get("search_facets");
-        Assertions.assertEquals(
-            List.of(
-                Map.of("category", "data_type", "name", "continuous"),
-                Map.of("category", "dataset_id", "name", "tutorial-biolincc_framingham")
-            ), searchFacets
-        );
+        Assertions.assertEquals(reduced, AuditAttributes.getMetadata(request).get("search_facets"));
     }
 
     @Test

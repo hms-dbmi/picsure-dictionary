@@ -105,4 +105,21 @@ public class FacetService {
     public Optional<Facet> facetDetails(String facetCategory, String facet) {
         return repository.getFacet(facetCategory, facet).map(f -> new Facet(f, repository.getFacetMeta(facetCategory, facet)));
     }
+
+    /**
+     * Reduce applied facets to a compact list of {@code {category, name}} objects. The full facet objects carry display/description/count
+     * and null fields that add noise; callers (e.g. audit logging) usually want only the identity of each selected facet. Returns an empty
+     * list when {@code facets} is null.
+     */
+    public List<Map<String, Object>> reduceFacets(List<Facet> facets) {
+        if (facets == null) {
+            return List.of();
+        }
+        return facets.stream().map(facet -> {
+            Map<String, Object> reduced = new LinkedHashMap<>();
+            reduced.put("category", facet.category());
+            reduced.put("name", facet.name());
+            return reduced;
+        }).toList();
+    }
 }
