@@ -1,5 +1,6 @@
 package edu.harvard.dbmi.avillach.dictionary.concept;
 
+import edu.harvard.dbmi.avillach.dictionary.AuditAttributes;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.CategoricalConcept;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.Concept;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.ContinuousConcept;
@@ -57,6 +58,22 @@ class ConceptControllerTest {
 
         Assertions.assertEquals(expected, actual.get().toList());
         Assertions.assertEquals(100L, actual.getTotalElements());
+    }
+
+    @Test
+    void shouldRecordSearchFacetsAsFacetObjects() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+
+        Facet facet = new Facet("phs000007", "Framingham", "desc", "phs000007", 3, null, "study_ids", null);
+        Filter filter = new Filter(List.of(facet), "heart", List.of());
+        Mockito.when(conceptService.listConcepts(filter, Pageable.ofSize(10).withPage(0))).thenReturn(List.of());
+        Mockito.when(conceptService.countConcepts(filter)).thenReturn(0L);
+
+        subject.listConcepts(filter, 0, 10);
+
+        Object searchFacets = AuditAttributes.getMetadata(request).get("search_facets");
+        Assertions.assertEquals(List.of(facet), searchFacets);
     }
 
     @Test

@@ -2,7 +2,6 @@ package edu.harvard.dbmi.avillach.dictionary.concept;
 
 import edu.harvard.dbmi.avillach.dictionary.AuditAttributes;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.Concept;
-import edu.harvard.dbmi.avillach.dictionary.facet.Facet;
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
 import edu.harvard.dbmi.avillach.logging.AuditEvent;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,7 +18,6 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.stream.Collectors;
 
 @Controller
 public class ConceptController {
@@ -65,10 +63,7 @@ public class ConceptController {
 
         AuditAttributes.putMetadata(httpRequest, "search_term", filter.search() != null ? filter.search() : "");
         AuditAttributes.putMetadata(httpRequest, "result_count", String.valueOf(count));
-        AuditAttributes.putMetadata(
-            httpRequest, "search_facets",
-            filter.facets() != null ? filter.facets().stream().map(Facet::name).collect(Collectors.joining(",")) : ""
-        );
+        AuditAttributes.putMetadata(httpRequest, "search_facets", filter.facets() != null ? filter.facets() : List.of());
 
         return ResponseEntity.ok(pageResp);
     }
