@@ -81,4 +81,24 @@ class FacetServiceTest {
 
         Assertions.assertEquals(expected, actual);
     }
+
+    @Test
+    void shouldReduceFacetsToCategoryAndName() {
+        Facet continuous = new Facet("continuous", "Continuous", "desc", "continuous", 3, null, "data_type", null);
+        Facet framingham = new Facet("tutorial-biolincc_framingham", "Framingham", "desc", null, 1, null, "dataset_id", null);
+
+        List<Map<String, Object>> actual = subject.reduceFacets(List.of(continuous, framingham));
+
+        Assertions.assertEquals(
+            List.of(
+                Map.of("category", "data_type", "name", "continuous"),
+                Map.of("category", "dataset_id", "name", "tutorial-biolincc_framingham")
+            ), actual
+        );
+    }
+
+    @Test
+    void shouldReduceNullFacetsToEmptyList() {
+        Assertions.assertEquals(List.of(), subject.reduceFacets(null));
+    }
 }

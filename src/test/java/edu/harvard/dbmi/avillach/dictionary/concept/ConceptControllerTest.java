@@ -1,9 +1,11 @@
 package edu.harvard.dbmi.avillach.dictionary.concept;
 
+import edu.harvard.dbmi.avillach.dictionary.AuditAttributes;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.CategoricalConcept;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.Concept;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.ContinuousConcept;
 import edu.harvard.dbmi.avillach.dictionary.facet.Facet;
+import edu.harvard.dbmi.avillach.dictionary.facet.FacetService;
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +34,9 @@ class ConceptControllerTest {
     @MockBean
     ConceptService conceptService;
 
+    @MockBean
+    FacetService facetService;
+
     @Autowired
     ConceptController subject;
 
@@ -57,6 +62,23 @@ class ConceptControllerTest {
 
         Assertions.assertEquals(expected, actual.get().toList());
         Assertions.assertEquals(100L, actual.getTotalElements());
+    }
+
+    @Test
+    void shouldRecordSearchFacetsFromFacetService() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+
+        Facet facet = new Facet("continuous", "Continuous", "desc", "continuous", 3, null, "data_type", null);
+        Filter filter = new Filter(List.of(facet), "heart", List.of());
+        List<Map<String, Object>> reduced = List.of(Map.of("category", "data_type", "name", "continuous"));
+        Mockito.when(conceptService.listConcepts(filter, Pageable.ofSize(10).withPage(0))).thenReturn(List.of());
+        Mockito.when(conceptService.countConcepts(filter)).thenReturn(0L);
+        Mockito.when(facetService.reduceFacets(filter.facets())).thenReturn(reduced);
+
+        subject.listConcepts(filter, 0, 10);
+
+        Assertions.assertEquals(reduced, AuditAttributes.getMetadata(request).get("search_facets"));
     }
 
     @Test

@@ -2,6 +2,7 @@ package edu.harvard.dbmi.avillach.dictionary.concept;
 
 import edu.harvard.dbmi.avillach.dictionary.AuditAttributes;
 import edu.harvard.dbmi.avillach.dictionary.concept.model.Concept;
+import edu.harvard.dbmi.avillach.dictionary.facet.FacetService;
 import edu.harvard.dbmi.avillach.dictionary.filter.Filter;
 import edu.harvard.dbmi.avillach.logging.AuditEvent;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,6 +24,7 @@ import java.util.concurrent.Future;
 public class ConceptController {
 
     private final ConceptService conceptService;
+    private final FacetService facetService;
 
     @Autowired
     private HttpServletRequest httpRequest;
@@ -31,8 +33,9 @@ public class ConceptController {
     private Integer MAX_DEPTH;
 
 
-    public ConceptController(@Autowired ConceptService conceptService) {
+    public ConceptController(@Autowired ConceptService conceptService, @Autowired FacetService facetService) {
         this.conceptService = conceptService;
+        this.facetService = facetService;
     }
 
 
@@ -63,6 +66,7 @@ public class ConceptController {
 
         AuditAttributes.putMetadata(httpRequest, "search_term", filter.search() != null ? filter.search() : "");
         AuditAttributes.putMetadata(httpRequest, "result_count", String.valueOf(count));
+        AuditAttributes.putMetadata(httpRequest, "search_facets", facetService.reduceFacets(filter.facets()));
 
         return ResponseEntity.ok(pageResp);
     }

@@ -74,6 +74,8 @@ public class AuditLoggingFilter extends OncePerRequestFilter {
 
                 AuditAttributes.getMetadata(request).forEach(metadata::putIfAbsent);
 
+                String caller = request.getHeader("X-Client-Type");
+
                 Map<String, Object> errorMap = null;
                 if (responseStatus >= 400) {
                     errorMap = new HashMap<>();
@@ -83,6 +85,7 @@ public class AuditLoggingFilter extends OncePerRequestFilter {
 
                 LoggingEvent.Builder eventBuilder =
                     LoggingEvent.builder(eventType).action(action).sessionId(sessionId).request(requestInfo).metadata(metadata);
+                if (caller != null && !caller.isEmpty()) eventBuilder.caller(caller);
                 if (errorMap != null) eventBuilder.error(errorMap);
                 LoggingEvent event = eventBuilder.build();
 
