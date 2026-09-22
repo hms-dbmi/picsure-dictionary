@@ -1,3 +1,11 @@
+> [!IMPORTANT]
+> **This repository is archived.** The code now lives in the PIC-SURE API mono-repository,
+> [hms-dbmi/pic-sure](https://github.com/hms-dbmi/pic-sure), under
+> [`services/picsure-dictionary`](https://github.com/hms-dbmi/pic-sure/tree/main/services/picsure-dictionary).
+> Work on it there, and open issues and pull requests against that repository.
+>
+> Everything below is the README as it stood when this repository was archived.
+
 # Dictionary Project
 
 ## Purpose
